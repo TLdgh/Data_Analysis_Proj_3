@@ -1,0 +1,134 @@
+```{r}
+read.csv("BASA_AUC_2028_912.csv")
+read.csv("dat_F_sub.csv")
+read.csv("dat_P_sub_c.csv")
+read.csv("years20262030.csv")
+```
+
+```{r}
+#合并三张表格中相同的列
+file_names <- c("BASA_AUC_2028_912.csv", "dat_P_sub_c.csv", "years20262030.csv")
+data_frames <- list()
+
+for (file_name in file_names) {
+  data <- read.csv(file_name, header = TRUE, stringsAsFactors = FALSE)
+  data_frames[[file_name]] <- data
+}
+
+common_column_names <- Reduce(intersect, lapply(data_frames, colnames))
+
+merged_data <- data.frame()
+for (file_name in file_names) {
+  common_data <- data_frames[[file_name]][, common_column_names, drop = FALSE]
+  merged_data <- merge(merged_data, common_data, all = TRUE)
+}
+
+print(merged_data)
+```
+
+```{r}
+#按照S2的时间给表格重新排序
+merged_data$S2 <- as.POSIXct(merged_data$S2, format = "%Y/%m/%d %H:%M")
+merged_data$Sch_Departure <- as.POSIXct(merged_data$Sch_Departure, format="%Y/%m/%d %H:%M")
+
+data2 <- merged_data[order(merged_data$S2), ]
+data2
+```
+
+```{r}
+#把Wait_Time为NA的行删掉
+data2 <- data2[complete.cases(data2$Wait_Time), ]
+
+#计算Sch_Departure和S2的时间差值(提前过安检的时间)
+time_difference_hours <- as.numeric(difftime(data2$Sch_Departure, data2$S2, units="hours"))
+data2$Time_Difference <- time_difference_hours
+
+#按照Airfield分类
+split_data <- split(data2, data2$Airfield)
+
+hist_list <- list()
+par(mfrow=c(1,2))  
+for (i in 1:length(split_data)) {
+  current_data <- split_data[[i]]
+  hist_obj <- hist(current_data$Time_Difference, breaks = breaks, xlab = "Time", main = paste("Histogram of Time Differences -", unique(current_data$Airfield)), xlim = range_of_time_difference)
+  hist_list[[i]] <- hist_obj
+}
+```
+
+```{r}
+#根据Time_of_Day分类
+par(mfrow=c(2,2))
+
+time_of_day_categories <- unique(data2$Time_of_Day)
+
+for (time_of_day in time_of_day_categories) {
+  subset_data <- data2[data2$Time_of_Day == time_of_day, ]
+
+  hist(subset_data$Wait_Time, main = paste("Histogram of Wait Time -", time_of_day),
+       xlab = "Wait Time", col = "lightblue", border = "black")
+}
+```
+
+```{r}
+# 每个Time_of_Day的平均 Wait_Time
+avg_time_day <- tapply(data2$Wait_Time, data2$Time_of_Day, mean)
+
+avg_time_day_df <- data.frame(Time_of_Day = names(avg_time_day),
+                               Average_Wait_Time = avg_time_day)
+
+barplot(avg_time_day_df$Average_Wait_Time, names.arg = avg_time_day_df$Time_of_Day,
+        col = "lightblue", border = "black", main = "Average Wait Time by Day",
+        xlab = "Time_of_Day", ylab = "Average Wait Time")
+```
+
+```{r}
+#根据Weekday还是Weekend分类
+par(mfrow=c(1,2))
+
+period_of_week_categories <- unique(data2$Period_of_Week)
+
+for (period_of_week in period_of_week_categories) {
+  subset_data <- data2[data2$Period_of_Week == period_of_week, ]
+
+  hist(subset_data$Wait_Time, main = paste("Histogram of Wait Time -", period_of_week),
+       xlab = "Wait Time", col = "lightblue", border = "black")
+}
+```
+
+```{r}
+# 每个 Period_of_Week 的平均 Wait_Time
+avg_time_week <- tapply(data2$Wait_Time, data2$Period_of_Week, mean)
+
+avg_time_week_df <- data.frame(Period_of_Week = names(avg_time_week),
+                               Average_Wait_Time = avg_time_week)
+
+barplot(avg_time_week_df$Average_Wait_Time, names.arg = avg_time_week_df$Period_of_Week,
+        col = "lightblue", border = "black", main = "Average Wait Time by Weekday and Weekend",
+        xlab = "Period_of_Week", ylab = "Average Wait Time")
+```
+
+```{r}
+#根据星期分类
+par(mfrow=c(3,3))
+
+day_of_week_categories <- unique(data2$Day_of_Week)
+
+for (day_of_week in day_of_week_categories) {
+  subset_data <- data2[data2$Day_of_Week == day_of_week, ]
+
+  hist(subset_data$Wait_Time, main = paste("Histogram of Wait Time -", day_of_week),
+       xlab = "Wait Time", col = "lightblue", border = "black")
+}
+```
+
+```{r}
+# 每个 Day_of_Week 的平均 Wait_Time
+avg_time <- tapply(data2$Wait_Time, data2$Day_of_Week, mean)
+
+avg_time_df <- data.frame(Day_of_Week = names(avg_time),
+                               Average_Wait_Time = avg_time)
+
+barplot(avg_time_df$Average_Wait_Time, names.arg = avg_time_df$Day_of_Week,
+        col = "lightblue", border = "black", main = "Average Wait Time by Day of Week",
+        xlab = "Day of Week", ylab = "Average Wait Time")
+```
