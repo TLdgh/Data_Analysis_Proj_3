@@ -32,7 +32,7 @@ merged_data$S2 <- as.POSIXct(merged_data$S2, format = "%Y/%m/%d %H:%M")
 merged_data$Sch_Departure <- as.POSIXct(merged_data$Sch_Departure, format="%Y/%m/%d %H:%M")
 
 data2 <- merged_data[order(merged_data$S2), ]
-data2
+head(data2)
 ```
 
 ```{r}
