@@ -1,0 +1,178 @@
+---
+title: "project3"
+author: "Chuhan Yue"
+date: "2023-11-03"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r pressure, echo=FALSE}
+library(dplyr)
+library(kableExtra)
+```
+
+```{r}
+data_1<-read.csv("BASA_AUC_2028_912.csv", header = TRUE)%>%select(-X)
+DataDict<-data.frame(
+  Variables=colnames(data_1),
+  Type=sapply(data_1, function(x) class(x)),
+  Example=sapply(data_1, function(x) paste(as.character(head(unique(x),5)), collapse = ", ")),
+  Number.Unique=sapply(data_1, function(x) length(unique(x))),
+  PctMissing=sapply(data_1, function(x) paste0(round(sum(is.na(x))/length(x), 4)*100,"%" ) ),
+  Comment=c("Airfield from which the passenger departed: Auckland [AUC], Chebucto [CWL], Queenston [QUE], SaintFrancois [SAF]",
+            "the date and time at which passengers exited the main queue S2, recorded to the nearest minute;",
+            "The waiting time of passenger in queue from S1 to S2, rounded up to the minute",
+            "The number of security agents at S1 when passenger was scaned",
+            "The number of security agents at S2 when passenger was scaned",
+            "The average of security agents at S1 and S2",
+            "scheduled time of departure",
+            "actual departure time of each passenger’s flight" ,
+            "city of destination",
+            "country of destination",
+            "order",
+            "ID for each passenger exited the main queue",
+            "Departure_Date",
+            "Departure_Time (recored in seconds: h*3600+m*60+s)",
+            "departure time of day",
+            "departrure day is weekend or weeakday",
+            "departure day in a week",
+            "month of departure",
+            "season of departure",
+            "year of departure"
+            )
+)
+
+DataDict%>%kable(booktabs = TRUE,caption = "Data Variable Definition")%>%
+  kable_styling(font_size=10, latex_options=c("striped","scale_down","hold_position"))%>%
+  column_spec(4, width = "8em")%>%
+  row_spec(0,bold=TRUE)
+```
+
+```{r}
+data_2<-read.csv("dat_F_sub.csv")%>%select(-X)
+DataDict<-data.frame(
+  Variables=colnames(data_2),
+  Type=sapply(data_2, function(x) class(x)),
+  Example=sapply(data_2, function(x) paste(as.character(head(unique(x),5)), collapse = ", ")),
+  Number.Unique=sapply(data_2, function(x) length(unique(x))),
+  PctMissing=sapply(data_2, function(x) paste0(round(sum(is.na(x))/length(x), 4)*100,"%" ) ),
+  Comment=c("Airfield: Auckland [AUC], Chebucto [CWL], Queenston [QUE], SaintFrancois [SAF]",
+            "Flight ID",
+            "scheduled time of departure",
+            "the actual departure time of each passenger’s flight" ,
+            "departure time in one day",
+            "departrure day is weekend or weeakday",
+            "departure day in a week",
+            "month",
+            "season",
+            "year",
+            "the number of passnager",
+            
+            
+            "delay second"
+            )
+)
+
+DataDict%>%kable(booktabs = TRUE,caption = "Data Variable Definition")%>%
+  kable_styling(font_size=10, latex_options=c("striped","scale_down","hold_position"))%>%
+  column_spec(4, width = "8em")%>%
+  row_spec(0,bold=TRUE)
+```
+
+```{r}
+data_3<-read.csv("dat_P_sub_c.csv")%>%select(-Pass_ID)
+DataDict<-data.frame(
+  Variables=colnames(data_3),
+  Type=sapply(data_3, function(x) class(x)),
+  Example=sapply(data_3, function(x) paste(as.character(head(unique(x),5)), collapse = ", ")),
+  Number.Unique=sapply(data_3, function(x) length(unique(x))),
+  PctMissing=sapply(data_3, function(x) paste0(round(sum(is.na(x))/length(x), 4)*100,"%" ) )
+)
+
+DataDict%>%kable(booktabs = TRUE,caption = "Data Variable Definition")%>%
+  kable_styling(font_size=10, latex_options=c("striped","scale_down","hold_position"))%>%
+  column_spec(4, width = "8em")%>%
+  row_spec(0,bold=TRUE)
+```
+
+```{r}
+data_1<- cbind(data_1,data.frame(Flight_ID = numeric(nrow(data_1))))
+data_1$Flight_ID<-0
+
+var_names1 <- unlist(strsplit(names(data_1), ","))  # 数据框1的列名
+var_names3 <- unlist(strsplit(names(data_3), ","))  # 数据框2的列名
+
+# 合并两个数据框，只保留相同的变量名
+common_vars <- intersect(var_names1, var_names3)
+
+# 选择两个数据框中相同的变量列
+df1_selected <- data_1 %>% select(all_of(common_vars))
+df3_selected <- data_3 %>% select(all_of(common_vars))
+
+# 合并两个数据框,删除重复行
+AUCdata <- bind_rows(df1_selected, df3_selected)%>%distinct()%>% arrange(Sch_Departure)
+```
+
+```{r}
+result <- AUCdata %>%
+  group_by(Year, Season, Time_of_Day, Day_of_Week) %>%  # 按照年、季度和时间段分组
+  summarise(
+   Meantime= mean(Wait_Time),# 计算均值或其他汇总统计量
+   Meanservers=mean(C0),
+   pro_ser1=sum(C0== 1)/n(),
+   pro_ser2=sum(C0== 2)/n(),
+   pro_ser3=sum(C0== 3)/n(),
+   ave_ser=pro_ser1*1+pro_ser2*2+pro_ser2*3,
+   TotalCount = n(),# 统计每个组的数据数量
+    .groups = "keep"
+  )
+```
+
+```{r}
+#average arrival rate, servers, wait time, service rate
+lambda <-mean(data_vector)  # 平均到达率（每小时到达的人数）
+# 假设 observed 是你的观察值向量， expected 是期望值向量
+chisq.test(observed, p = lambda)
+
+mu <- 6     # 平均服务率（每小时服务的人数）
+simulation_time <- 1000  # 模拟时间（小时）
+
+# 初始化模拟数据
+clock <- 0
+queue <- 0
+departure <- Inf
+
+# 统计信息
+total_customers <- 0
+total_waiting_time <- 0
+
+# 开始模拟
+while (clock < simulation_time) {
+  if (clock < departure) {
+    interarrival_time <- rexp(1, 1 / lambda)
+    clock <- clock + interarrival_time
+    total_customers <- total_customers + 1
+    if (queue == 0) {
+      service_time <- rexp(1, 1 / mu)
+      departure <- clock + service_time
+    } else {
+      queue <- queue + 1
+    }
+  } else {
+    queue <- queue - 1
+    total_waiting_time <- total_waiting_time + (departure - clock)
+    service_time <- rexp(1, 1 / mu)
+    clock <- departure
+    departure <- clock + service_time
+  }
+}
+
+# 计算模拟结果
+average_waiting_time <- total_waiting_time / total_customers
+average_queue_length <- total_waiting_time / simulation_time
+
+cat("模拟结果:\n")
+cat("平均等待时间: ", average_waiting_time, "小时\n")
+cat("平均队列长度: ", average_queue_length, "\n")
+```
