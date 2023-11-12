@@ -157,7 +157,8 @@ result <- AUCdata %>%
 
 head(result)
 ```
-```{r, eval=FALSE}
+
+```{r}
 #average arrival rate, servers, wait time, service rate
 lambda <-mean(data_vector)  # 平均到达率（每小时到达的人数）
 # 假设 observed 是你的观察值向量， expected 是期望值向量
