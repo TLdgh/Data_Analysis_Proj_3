@@ -44,12 +44,12 @@ Passenger<-read.csv("dat_P_sub_c.csv")
 Y2026<-read.csv("years20262030.csv")
 ```
 
-The four data sets had common variables. The AUC data set was the biggest one containing most of the common variables, hence we used it as the main data set. We compared the variables between AUC and Passenger data and noticed that Passenger had unique variables with suffix "Flag", which we thought was not useful for our analysis. Other unique variables in Passenger were presented in other tables as well, hence omitted. 
+The four data sets had common variables. The AUC data set was the biggest one containing most of the common variables, hence we used it as the main data set. We compared the variables between AUC and Passenger data and noticed that Passenger had unique variables with suffix "Flag", which we thought was not useful for our analysis. Other unique variables in Passenger were presented in other tables as well, hence these variables were omitted in our Queuing Analysis section. 
 ```{r}
 setdiff(colnames(Passenger), colnames(AUC))
 ```
 
-Similarly, the Flight data had variables that weren't really relevant or useful for our analysis, hence we also omitted them.
+Similarly, the Flight data had variables that weren't really relevant or useful for our analysis, hence we also omitted them in Queuing Analysis.
 ```{r}
 setdiff(colnames(Flight), colnames(AUC))
 ```
@@ -149,6 +149,16 @@ DataDict%>%kable(booktabs = TRUE,caption = "Flight Variable Definition")%>%
   kable_styling(font_size=10, latex_options=c("striped","scale_down","hold_position"))%>%
   column_spec(2, width = "8em")%>%
   row_spec(0,bold=TRUE)
+```
+
+We must also pointed out that there were flaws in these data sets that we had to correct. The AUC data contained the useful information from the Passenger data, as we have explained earlier. However there was a discrepancy of 10 minutes between the AUC Schedule Departure time and the Passenger Schedule Departure time. We believed that this difference is a minor mistake. AUC data contained the least amount of mistakes overall, hence another reason for us to use the AUC data directly in our Queuing analysis. In addition, The Period_of_Week variable did not match with the Day_of_Week, therefore we have cleaned all these flaws before doing the subsequent analyses.
+
+```{r}
+#clean AUC data:
+AUC<-AUC%>%mutate(Period_of_Week=case_when(
+    Day_of_Week=="6 - SAT" | Day_of_Week=="7 - SUN" ~ "2 - WEEKEND",
+    .default = "1 - WEEKDAY"
+))
 ```
 
 ```{r}
