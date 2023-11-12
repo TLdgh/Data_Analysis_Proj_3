@@ -56,17 +56,17 @@ setdiff(colnames(Flight), colnames(AUC))
 
 AUC and Y2026 had the same variables, except that Y2026 has airfields other than Auckland.
 
-We gave a proper data definition in the following Table(). 
+We gave a proper data definition in the following Table() for AUC data and for the unique variables in Passenger and Flight data in Table () and Table(). 
 
 ```{r}
 DataDict<-AUC%>%select(-X)
 DataDict<-data.frame(
   Variables=colnames(DataDict),
-  Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),2)), collapse = ", ")),
+  Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),1)), collapse = ", ")),
   Number.Unique=sapply(DataDict, function(x) length(unique(x))),
   PctMissing=sapply(DataDict, function(x) paste0(round(sum(is.na(x))/length(x), 4)*100,"%" ) ),
   Comment=c("Airfield from which the passenger departed: Auckland [AUC], Chebucto [CWL], Queenston [QUE], SaintFrancois [SAF]",
-            "the date and time at which passengers exited the main queue S2, recorded to the nearest minute;",
+            "the date and time at which passengers exited the main queue S2, recorded to the nearest minute",
             "The waiting time of passenger in queue from S1 to S2, rounded up to the minute",
             "The number of security agents at S1 when passenger was scaned",
             "The number of security agents at S2 when passenger was scaned",
@@ -89,7 +89,64 @@ DataDict<-data.frame(
 )
 
 DataDict%>%kable(booktabs = TRUE,caption = "AUC Variable Definition")%>%
-  kable_styling(font_size=10, latex_options=c("striped", "scale_down","hold_position"))%>%
+  kable_styling(font_size=7, latex_options=c("striped","hold_position"))%>%
+  column_spec(2, width = "8em")%>%
+  column_spec(5, width = "15em")%>%
+  row_spec(0,bold=TRUE)
+```
+
+```{r}
+DataDict<-Passenger%>%select(setdiff(colnames(Passenger), colnames(AUC)))
+DataDict<-data.frame(
+  Variables=colnames(DataDict),
+  Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),2)), collapse = ", ")),
+  Number.Unique=sapply(DataDict, function(x) length(unique(x))),
+  PctMissing=sapply(DataDict, function(x) paste0(round(sum(is.na(x))/length(x), 4)*100,"%" ) ), 
+  Comment=c("Valid passenger ID",
+            "If Wait_Time is NA or not",
+            "If S2 Schedule departure is NA or not",
+            "If S2 Actural departure is NA or not",
+            "If Schedule departure is NA or not",
+            "Flight ID",
+            "Delay in seconds"
+            ),
+  row.names = NULL
+)
+
+DataDict%>%kable(booktabs = TRUE,caption = "Passenger Variable Definition")%>%
+  kable_styling(font_size=10, latex_options=c("striped","scale_down","hold_position"))%>%
+  column_spec(2, width = "8em")%>%
+  row_spec(0,bold=TRUE)
+```
+
+```{r}
+DataDict<-Flight%>%select(setdiff(colnames(Flight), colnames(AUC)))
+DataDict<-data.frame(
+  Variables=colnames(DataDict),
+  Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),2)), collapse = ", ")),
+  Number.Unique=sapply(DataDict, function(x) length(unique(x))),
+  PctMissing=sapply(DataDict, function(x) paste0(round(sum(is.na(x))/length(x), 4)*100,"%" ) ),
+  Comment=c("Flight ID",
+            "total number of passengers",
+            "actual number of passengers",
+            "mimimum waiting time",
+            "mean waiting time",
+            "median waiting time",
+            "maximum waiting time",
+            "mean length of waiting time",
+            "mean_City_Flag",
+            "mode_BFO_Dest_City",
+            "sum of the mode in the city",
+            "number of destinated city",
+            "mode_BFO_Dest_Country_Code",
+            "sum of the mode in the country",
+            "number of destinated country",
+            "delay second"
+            ), row.names = NULL
+)
+
+DataDict%>%kable(booktabs = TRUE,caption = "Flight Variable Definition")%>%
+  kable_styling(font_size=10, latex_options=c("striped","scale_down","hold_position"))%>%
   column_spec(2, width = "8em")%>%
   row_spec(0,bold=TRUE)
 ```
@@ -107,11 +164,9 @@ result <- AUC %>%
    TotalCount = n(),# 统计每个组的数据数量
     .groups = "drop"
   )
-
-head(result)
 ```
 
-```{r}
+```{r, eval=FALSE}
 #average arrival rate, servers, wait time, service rate
 lambda <-mean(data_vector)  # 平均到达率（每小时到达的人数）
 # 假设 observed 是你的观察值向量， expected 是期望值向量
