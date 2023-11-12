@@ -95,63 +95,6 @@ DataDict%>%kable(booktabs = TRUE,caption = "AUC Variable Definition")%>%
 ```
 
 ```{r}
-data_2<-read.csv("dat_F_sub.csv")%>%select(-X)
-DataDict<-data.frame(
-  Variables=colnames(data_2),
-  Example=sapply(data_2, function(x) paste(as.character(head(unique(x),5)), collapse = ", ")),
-  Number.Unique=sapply(data_2, function(x) length(unique(x))),
-  PctMissing=sapply(data_2, function(x) paste0(round(sum(is.na(x))/length(x), 4)*100,"%" ) ),
-  Comment=c("Airfield: Auckland [AUC], Chebucto [CWL], Queenston [QUE], SaintFrancois [SAF]",
-            "Flight ID",
-            "scheduled time of departure",
-            "the actual departure time of each passenger’s flight" ,
-            "departure time in one day",
-            "departrure day is weekend or weeakday",
-            "departure day in a week",
-            "month",
-            "season",
-            "year",
-            "total number of passengers",
-            "actual number of passengers",
-            "mimimum waiting time",
-            "mean waiting time",
-            "median waiting time",
-            "maximum waiting time",
-            "mean length of waiting time",
-            "mean_City_Flag",
-            "mode_BFO_Dest_City",
-            "sum of the mode in the city",
-            "number of destinated city",
-            "mode_BFO_Dest_Country_Code",
-            "sum of the mode in the country",
-            "number of destinated country",
-            "delay second"
-            ), row.names = NULL
-)
-
-DataDict%>%kable(booktabs = TRUE,caption = "dat\\_F Variable Definition")%>%
-  kable_styling(font_size=10, latex_options=c("striped","scale_down","hold_position"))%>%
-  column_spec(4, width = "8em")%>%
-  row_spec(0,bold=TRUE)
-```
-
-```{r}
-data_3<-read.csv("dat_P_sub_c.csv")%>%select(-Pass_ID)
-DataDict<-data.frame(
-  Variables=colnames(data_3),
-  Example=sapply(data_3, function(x) paste(as.character(head(unique(x),5)), collapse = ", ")),
-  Number.Unique=sapply(data_3, function(x) length(unique(x))),
-  PctMissing=sapply(data_3, function(x) paste0(round(sum(is.na(x))/length(x), 4)*100,"%" ) ), row.names = NULL
-)
-
-DataDict%>%kable(booktabs = TRUE,caption = "dat\\_P Variable Definition")%>%
-  kable_styling(font_size=10, latex_options=c("striped","scale_down","hold_position"))%>%
-  column_spec(4, width = "8em")%>%
-  row_spec(0,bold=TRUE)
-```
-
-
-```{r}
 result <- AUC %>%
   group_by(Year, Season, Time_of_Day, Day_of_Week) %>%  # 按照年、季度和时间段分组
   summarise(
