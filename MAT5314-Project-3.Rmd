@@ -177,51 +177,47 @@ result <- AUC %>%
 ```
 
 ```{r, eval=FALSE}
-#average arrival rate, servers, wait time, service rate
-lambda <-mean(data_vector)  # 平均到达率（每小时到达的人数）
-# 假设 observed 是你的观察值向量， expected 是期望值向量
-chisq.test(observed, p = lambda)
+# 定义参数
+lambda <- 5  # 平均到达率 (arrivals per time unit)
+mu <- 6      # 平均服务率 (services per time unit)
 
-mu <- 6     # 平均服务率（每小时服务的人数）
-simulation_time <- 1000  # 模拟时间（小时）
+# 模拟时间
+sim_time <- 1000
 
-# 初始化模拟数据
-clock <- 0
-queue <- 0
-departure <- Inf
+# 初始化变量
+queue <- numeric(0)  # 队列
+clock <- 0           # 时钟
+arrivals <- 0        # 到达数
+departures <- 0      # 服务完成数
 
-# 统计信息
-total_customers <- 0
-total_waiting_time <- 0
-
-# 开始模拟
-while (clock < simulation_time) {
-  if (clock < departure) {
-    interarrival_time <- rexp(1, 1 / lambda)
-    clock <- clock + interarrival_time
-    total_customers <- total_customers + 1
-    if (queue == 0) {
-      service_time <- rexp(1, 1 / mu)
-      departure <- clock + service_time
-    } else {
-      queue <- queue + 1
-    }
-  } else {
-    queue <- queue - 1
-    total_waiting_time <- total_waiting_time + (departure - clock)
-    service_time <- rexp(1, 1 / mu)
-    clock <- departure
-    departure <- clock + service_time
+# 模拟循环
+while (clock < sim_time) {
+  # 计算下一个到达和服务时间
+  inter_arrival_time <- rexp(1, lambda)
+  arrival_time <- clock + inter_arrival_time
+  
+  service_time <- rexp(1, mu)
+  departure_time <- clock + service_time
+  
+  # 处理到达事件
+  if (arrival_time < departure_time || departures == 0) {
+    arrivals <- arrivals + 1
+    queue <- c(queue, arrival_time)
+    clock <- arrival_time
+  } else {  # 处理服务完成事件
+    departures <- departures + 1
+    queue <- queue[-1]
+    clock <- departure_time
   }
 }
 
 # 计算模拟结果
-average_waiting_time <- total_waiting_time / total_customers
-average_queue_length <- total_waiting_time / simulation_time
+average_waiting_time <- sum(departure_time - queue) / departures
 
-cat("模拟结果:\n")
-cat("平均等待时间: ", average_waiting_time, "小时\n")
-cat("平均队列长度: ", average_queue_length, "\n")
+# 打印结果
+cat("Average Waiting Time:", average_waiting_time, "\n")
+cat("Total Arrivals:", arrivals, "\n")
+cat("Total Departures:", departures, "\n")
 ```
 
 ```{r}
