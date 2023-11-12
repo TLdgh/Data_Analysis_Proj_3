@@ -31,6 +31,33 @@ library(webshot)
 
 ### Introduction
 
+It is common that a passenger gets screened at an airfield for security and management purpose. This screening process involves some major steps such as scanning the boarding pass at entrance, serving the passenger, and exiting the service desk. This process can be described by queuing theory, in which a statistical model is built to analyze the waiting time and service processes. It allows to examine the relationship between inter-arrivals, service times and the capacity of the system demonstrated by calculating the number of servers needed to achieve certain quality of service level. In the end, one can gain an overall picture of the efficiency and dynamics of the screening process.
+
+We were given four data sets containing the details of the screening process at the four major airfields of the nation. Our goal was to explain the data sets through data definitions and explanations, to explore the data sets by visualizing and analyzing their variables and possible relationships, and finally to perform the queuing analysis to predict the expected wait time at each airfield.
+
+### Data Definition
+
+```{r}
+data_1<-read.csv("BASA_AUC_2028_912.csv", header = TRUE)
+data_2<-read.csv("dat_F_sub.csv")
+data_3<-read.csv("dat_P_sub_c.csv")
+data_4<-read.csv("years20262030.csv")
+```
+
+The four data sets had common variables. The AUC data set was the biggest one containing most of the common variables, hence we used it as the main data set. We compared the variables between AUC and Passenger data and noticed that Passenger had unique variables with suffix "Flag", which we thought was not useful for our analysis. Other unique variables in Passenger were presented in other tables as well, hence omitted. 
+```{r}
+setdiff(colnames(data_3), colnames(data_1))
+```
+
+Similarly, the Flight data had variables that weren't really relevant or useful for our analysis, hence we also omitted them.
+```{r}
+setdiff(colnames(data_2), colnames(data_1))
+```
+
+AUC and Y2026 had the same variables, except that Y2026 has airfields other than Auckland.
+
+We gave a proper data definition in the following Table(). 
+
 ```{r}
 data_1<-read.csv("BASA_AUC_2028_912.csv", header = TRUE)%>%select(-X)
 DataDict<-data.frame(
@@ -43,9 +70,9 @@ DataDict<-data.frame(
             "The waiting time of passenger in queue from S1 to S2, rounded up to the minute",
             "The number of security agents at S1 when passenger was scaned",
             "The number of security agents at S2 when passenger was scaned",
-            "The average of security agents at S1 and S2",
-            "scheduled time of departure",
-            "actual departure time of each passenger’s flight" ,
+            "The average number of security agents at S1 and S2",
+            "scheduled departure time",
+            "actual departure time" ,
             "city of destination",
             "country of destination",
             "order",
@@ -53,7 +80,7 @@ DataDict<-data.frame(
             "Departure_Date",
             "Departure_Time (recored in seconds: h*3600+m*60+s)",
             "departure time of day",
-            "departrure day is weekend or weeakday",
+            "departure day is weekend or weeakday",
             "departure day in a week",
             "month of departure",
             "season of departure",
@@ -61,7 +88,7 @@ DataDict<-data.frame(
             ), row.names = NULL
 )
 
-DataDict%>%kable(booktabs = TRUE,caption = "BASA\\_AUC Variable Definition")%>%
+DataDict%>%kable(booktabs = TRUE,caption = "AUC Variable Definition")%>%
   kable_styling(font_size=10, latex_options=c("striped", "scale_down","hold_position"))%>%
   column_spec(2, width = "8em")%>%
   row_spec(0,bold=TRUE)
@@ -123,26 +150,9 @@ DataDict%>%kable(booktabs = TRUE,caption = "dat\\_P Variable Definition")%>%
   row_spec(0,bold=TRUE)
 ```
 
-```{r}
-data_1<- cbind(data_1,data.frame(Flight_ID = numeric(nrow(data_1))))
-data_1$Flight_ID<-0
-
-var_names1 <- unlist(strsplit(names(data_1), ","))  # 数据框1的列名
-var_names3 <- unlist(strsplit(names(data_3), ","))  # 数据框2的列名
-
-# 合并两个数据框，只保留相同的变量名
-common_vars <- intersect(var_names1, var_names3)
-
-# 选择两个数据框中相同的变量列
-df1_selected <- data_1 %>% select(all_of(common_vars))
-df3_selected <- data_3 %>% select(all_of(common_vars))
-
-# 合并两个数据框,删除重复行
-AUCdata <- bind_rows(df1_selected, df3_selected)%>%distinct()%>% arrange(Sch_Departure)
-```
 
 ```{r}
-result <- AUCdata %>%
+result <- AUC %>%
   group_by(Year, Season, Time_of_Day, Day_of_Week) %>%  # 按照年、季度和时间段分组
   summarise(
    Meantime= mean(Wait_Time),# 计算均值或其他汇总统计量
@@ -209,6 +219,11 @@ cat("平均队列长度: ", average_queue_length, "\n")
 ```{r}
 data_4<-read.csv("years20262030.csv")
 ```
+
+
+### Data exploration
+
+### Queuing Analysis
 
 ### References
 
