@@ -38,20 +38,20 @@ We were given four data sets containing the details of the screening process at 
 ### Data Definition
 
 ```{r}
-data_1<-read.csv("BASA_AUC_2028_912.csv", header = TRUE)
-data_2<-read.csv("dat_F_sub.csv")
-data_3<-read.csv("dat_P_sub_c.csv")
-data_4<-read.csv("years20262030.csv")
+AUC<-read.csv("BASA_AUC_2028_912.csv", header = TRUE)
+Flight<-read.csv("dat_F_sub.csv")
+Passenger<-read.csv("dat_P_sub_c.csv")
+Y2026<-read.csv("years20262030.csv")
 ```
 
 The four data sets had common variables. The AUC data set was the biggest one containing most of the common variables, hence we used it as the main data set. We compared the variables between AUC and Passenger data and noticed that Passenger had unique variables with suffix "Flag", which we thought was not useful for our analysis. Other unique variables in Passenger were presented in other tables as well, hence omitted. 
 ```{r}
-setdiff(colnames(data_3), colnames(data_1))
+setdiff(colnames(Passenger), colnames(AUC))
 ```
 
 Similarly, the Flight data had variables that weren't really relevant or useful for our analysis, hence we also omitted them.
 ```{r}
-setdiff(colnames(data_2), colnames(data_1))
+setdiff(colnames(Flight), colnames(AUC))
 ```
 
 AUC and Y2026 had the same variables, except that Y2026 has airfields other than Auckland.
@@ -59,12 +59,12 @@ AUC and Y2026 had the same variables, except that Y2026 has airfields other than
 We gave a proper data definition in the following Table(). 
 
 ```{r}
-data_1<-read.csv("BASA_AUC_2028_912.csv", header = TRUE)%>%select(-X)
+DataDict<-AUC%>%select(-X)
 DataDict<-data.frame(
-  Variables=colnames(data_1),
-  Example=sapply(data_1, function(x) paste(as.character(head(unique(x),2)), collapse = ", ")),
-  Number.Unique=sapply(data_1, function(x) length(unique(x))),
-  PctMissing=sapply(data_1, function(x) paste0(round(sum(is.na(x))/length(x), 4)*100,"%" ) ),
+  Variables=colnames(DataDict),
+  Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),2)), collapse = ", ")),
+  Number.Unique=sapply(DataDict, function(x) length(unique(x))),
+  PctMissing=sapply(DataDict, function(x) paste0(round(sum(is.na(x))/length(x), 4)*100,"%" ) ),
   Comment=c("Airfield from which the passenger departed: Auckland [AUC], Chebucto [CWL], Queenston [QUE], SaintFrancois [SAF]",
             "the date and time at which passengers exited the main queue S2, recorded to the nearest minute;",
             "The waiting time of passenger in queue from S1 to S2, rounded up to the minute",
@@ -105,7 +105,7 @@ result <- AUC %>%
    pro_ser3=sum(C0== 3)/n(),
    ave_ser=pro_ser1*1+pro_ser2*2+pro_ser2*3,
    TotalCount = n(),# 统计每个组的数据数量
-    .groups = "keep"
+    .groups = "drop"
   )
 
 head(result)
