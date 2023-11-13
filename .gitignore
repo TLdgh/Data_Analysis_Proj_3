@@ -1,24 +1,15 @@
-<<<<<<< HEAD
-.Rproj.user
-.Rhistory
-.RData
-.Ruserdata
-=======
 # History files
 .Rhistory
 .Rapp.history
 .DS_Store
-
 # Session Data files
 .RData
 dat_P_sub_c.csv
 dat_F_sub.csv
 BASA_AUC_2028_912.csv
 years20262030.csv
-
 # RStudio files
 .Rproj.user/
-
 # Project file
 Data_Analysis_Proj_3.Rproj
 *.html
@@ -28,4 +19,3 @@ Data_Analysis_Proj_3.Rproj
 Figures/*_files/
 !Citation/*
 MAT5314-Project-3.tex
->>>>>>> b2c39bcde8791752ff6945fcbe3349a07671f8c4
