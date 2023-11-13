@@ -134,28 +134,241 @@ List2 <- list(BASA_WEEKDAY_SUMMER,BASA_WEEKDAY_AUTUMN,BASA_WEEKEND_SUMMER,BASA_W
 ```
 
 ```{r}
-lambda <- data.frame()
+Result <- data.frame()
 for(i in c(1,2,3,4)){
   filter_df <- FilterByTimeS1(List2[[i]], start_time = "00:00:00", end_time = "24:00:00", 240)
   for(j in time_interval){
     if(i == 1){
       cluster <- filter_df[[j]]
-      lambda <- rbind(lambda,c("Summer","Weekday",j,nrow(cluster)/(13*5*4)))
+      lambda <-nrow(cluster)/(13*5*4)
+      Wq <-mean(cluster$Wait_Time)
+      mu <- (Wq*lambda+sqrt((Wq*lambda)^2+4*Wq*lambda))/(2*Wq)
+      Result <- rbind(Result,c("Summer","Weekday",j,lambda,Wq,mu))
     }
     else if(i == 2){
       cluster <- filter_df[[j]]
-      lambda <- rbind(lambda,c("Autumn","Weekday",j,nrow(cluster)/(13*5*4)))
+      lambda <- nrow(cluster)/(13*5*4)
+      Wq <- mean(cluster$Wait_Time)
+      mu <- (Wq*lambda+sqrt((Wq*lambda)^2+4*Wq*lambda))/(2*Wq)
+      Result <- rbind(Result,c("Autumn","Weekday",j,lambda,Wq,mu))
     }
     else if(i == 3){
       cluster <- filter_df[[j]]
-      lambda <- rbind(lambda,c("Summer","Weekend",j,nrow(cluster)/(13*2*4)))
+      lambda <- nrow(cluster)/(13*2*4)
+      Wq <- mean(cluster$Wait_Time)
+      mu <- (Wq*lambda+sqrt((Wq*lambda)^2+4*Wq*lambda))/(2*Wq)
+      Result <- rbind(Result,c("Summer","Weekend",j,lambda,Wq,mu))
     }
     else{
       cluster <- filter_df[[j]]
-      lambda <- rbind(lambda,c("Autumn","Weekend",j,nrow(cluster)/(13*2*4)))
+      lambda <- nrow(cluster)/(13*2*4)
+      Wq <- mean(cluster$Wait_Time)
+      mu <- (Wq*lambda+sqrt((Wq*lambda)^2+4*Wq*lambda))/(2*Wq)
+      Result <- rbind(Result,c("Autumn","Weekend",j,lambda,Wq,mu))
     }
   }
 }
-colnames(lambda) <- c("Season","Period_of_week","Time_Period","Arrival_rate")
-View(lambda)
+colnames(Result) <- c("Season","Period_of_week","Time_Period","Arrival_rate","Avg_Wait_Time","Service_rate")
+View(Result)
+```
+
+```{r}
+# 定义参数
+lambda <- 5
+  # 平均到达率 (arrivals per time unit)
+mu <- 6      # 平均服务率 (services per time unit)
+
+# 模拟时间
+sim_time <- 1000
+
+# 初始化变量
+queue <- numeric(0)  # 队列
+clock <- 0           # 时钟
+arrivals <- 0        # 到达数
+departures <- 0      # 服务完成数
+
+# 模拟循环
+while (clock < sim_time) {
+  # 计算下一个到达和服务时间
+  inter_arrival_time <- rexp(1, lambda)
+  arrival_time <- clock + inter_arrival_time
+  
+  service_time <- rexp(1, mu)
+  departure_time <- clock + service_time
+  
+  # 处理到达事件
+  if (arrival_time < departure_time || departures == 0) {
+    arrivals <- arrivals + 1
+    queue <- c(queue, arrival_time)
+    clock <- arrival_time
+  } else {  # 处理服务完成事件
+    departures <- departures + 1
+    queue <- queue[-1]
+    clock <- departure_time
+  }
+}
+# 计算模拟结果
+average_waiting_time <- sum(departure_time - queue) / departures
+
+# 打印结果
+cat("Average Waiting Time:", average_waiting_time, "\n")
+cat("Total Arrivals:", arrivals, "\n")
+cat("Total Departures:", departures, "\n")
+```
+
+https://www.math.pku.edu.cn/teachers/lidf/docs/statcomp/html/_statcompbook/sim-des.html
+```{r}
+demo.mm1 <- function(T0=0, T1=10000, lambda, mu, DEBUG=FALSE){
+  ## 初始化
+  t <- 0     # 时钟
+  B <- FALSE # 柜员忙标志
+  L <- 0     # 排队等候人数
+  i <- 0     # 当前到达顾客号
+  j <- 0     # 正在接受服务顾客号
+  n <- 0     # 已结束服务顾客数
+  max_events <- T1/lambda*2 # 设置一个较大的时间集合存储空间
+  a <- numeric(max_events) # 顾客到来时间的集合
+  s <- numeric(max_events) # 顾客开始服务时间的集合
+  e <- numeric(max_events) # 顾客结束服务时间的集合
+  X <- rexp(1, lambda); A <- X # 下一顾客到来时间
+  E <- NA         # 下一个服务结束时间
+  
+  ## 时钟反复跳到下一事件发生的时间，并处理事件，更新待发生事件集合
+  repeat{
+    if(DEBUG){
+      cat('\n')
+      cat('t=', round(t,2), ' B=', as.integer(B), ' L=', L,
+          ' i=', i, ' A=', round(A,2),
+          ' n=', n, ' E=', round(E,2), 
+          ' j=', j, 
+          '\n', sep='')
+      cat('到达序列', round(a,2), '\n')
+      cat('开始序列', round(s,2), '\n')
+      cat('结束序列', round(e,2), '\n')
+    }
+    if(!B || (B && A<E)){ # 不忙，或待处理下一到来事件
+      t <- A
+    } else {
+      t <- E
+    }
+    if(t > T1) break
+    
+    if(t == A){ # 待处理到达事件
+      L <- L+1
+      i <- i+1; a[i] <- t
+      X <- rexp(1, lambda); A <- t + X
+      if(!B){
+        B <- TRUE
+        L <- L-1
+        j <- j+1; s[j] <- t
+        Y <- rexp(1, mu); E <- t + Y
+      } # if !B
+    } else { # 待处理结束服务事件
+      B <- FALSE
+      n <- n+1; e[n] <- t
+      if(L > 0){
+        L <- L-1
+        B <- 1
+        j <- j+1; s[j] <- t
+        Y <- rexp(1, mu); E <- t + Y
+      }
+    } # end of 待处理结束服务事件
+  } # end of repeat
+  
+  nn <- min(c(i, j, n))
+  a <- a[seq(nn)]
+  s <- s[seq(nn)]
+  e <- e[seq(nn)]
+  I <- a >= T0 & a <= T1
+  ER <- mean(e[I] - a[I])
+  ER.true <- 1/(mu-lambda)
+  cat('估计的平均滞留时间ER=', ER,
+      ' 期望值=', ER.true, '\n')
+  c(ER.hat=ER, ER.true=ER.true)
+}
+```
+
+
+```{r}
+set.seed(1)
+demo.mm1(T0=0,T1=100000, 6.55769230769231
+,6.63054265619527,DEBUG=FALSE)
+mean(S2_FourEight_BASA_WEEKDAY_SUMMER$Wait_Time)
+mean(S1_FourEight_BASA_WEEKDAY_SUMMER$Wait_Time)
+(mean(S2_FourEight_BASA_WEEKDAY_SUMMER$Wait_Time)+mean(S1_FourEight_BASA_WEEKDAY_SUMMER$Wait_Time))/2
+```
+
+```{r}
+mean(S2_FourEight_BASA_WEEKDAY_SUMMER$Wait_Time)
+mean(S2_EightTwelve_BASA_WEEKDAY_SUMMER$Wait_Time)
+mean(S2_TwelveSixteen_BASA_WEEKDAY_SUMMER$Wait_Time)
+mean(S2_SixteenTwenty_BASA_WEEKDAY_SUMMER$Wait_Time)
+mean(S2_TwentyTwentyfour_BASA_WEEKDAY_SUMMER$Wait_Time)
+```
+
+```{r}
+View(Result[-c(1,7,13,19),])
+set.seed(1)
+for(n in 1:nrow(Result[-c(1,7,13,19),])){
+  demo.mm1(T0=0,T1=100000, as.numeric(Result[-c(1,7,13,19),]$Arrival_rate[n]),as.numeric(Result[-c(1,7,13,19),]$Service_rate[n]),DEBUG=FALSE)
+  }
+```
+
+```{r}
+# 定义参数
+lambda <- 5   # 平均到达率 (arrivals per time unit)
+mu <- 6       # 平均服务率 (services per time unit)
+sim_time <- 10# 模拟时间
+
+# 初始化变量
+queue <- numeric(0)  # 队列
+clock <- 0           # 时钟
+arrivals <- 0        # 到达数
+departures <- 0      # 服务完成数
+waittime<-0          #等待时长
+
+inter_arrival_time <- rexp(1, lambda)
+arrival_time<- inter_arrival_time#第一个乘客到达时间
+clock<-arrival_time
+
+# 模拟循环从第二个乘客开始
+while (clock < sim_time) {
+  # 计算下一个到达和服务时间
+  service_time <- rexp(1, mu)
+  departure_time <- arrival_time + service_time
+  inter_arrival_time <- rexp(1, lambda)
+  arrival_time<- arrival_time + inter_arrival_time
+  # 处理到达事件
+  if (arrival_time < departure_time) {
+    arrivals <- arrivals + 1
+    clock <- arrival_time
+    waittime<-departure_time-arrival_time
+  } else {  # 处理服务完成事件
+    arrivals<-arrivals + 1
+    departures <- departures + 1
+    queue <- queue-1
+    waittime<-waittime
+  }
+}
+
+# 计算模拟结果
+average_waiting_time <- waittime / arrivals
+
+# 打印结果
+cat("Average Waiting Time:", average_waiting_time, "\n")
+cat("Total Arrivals:", arrivals, "\n")
+cat("Total Departures:", departures, "\n")
+```
+
+
+Group by season, period of week, time of day
+
+```{r}
+a <- subset(BASA,BASA$X == 284974)
+a$S2
+a$Time_of_Day
+```
+
+```{r}
+TimeOfDay <- unique(BASA_fill$Time_of_Day)
 ```
