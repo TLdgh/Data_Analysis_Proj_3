@@ -1,5 +1,5 @@
 ---
-title: "temp1_pj3"
+title: "temp1"
 author: "Yang Lyu"
 date: "06/11/2023"
 output: pdf_document
