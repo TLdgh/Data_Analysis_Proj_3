@@ -11,7 +11,7 @@ output:
     keep_tex: true
     includes:
       in_header: columns.tex
-fontsize: 11pt
+fontsize: 12pt
 header-includes: 
   - \renewcommand{\and}{\\}
   - \usepackage{float}
@@ -31,6 +31,203 @@ library(webshot)
 
 ### Introduction
 
+It is common that a passenger gets screened at an airfield for security and management purpose. This screening process involves some major steps such as scanning the boarding pass at entrance, serving the passenger, and exiting the service desk. This process can be described by queuing theory, in which a statistical model is built to analyze the waiting time and service processes. It allows to examine the relationship between inter-arrivals, service times and the capacity of the system demonstrated by calculating the number of servers needed to achieve certain quality of service level. In the end, one can gain an overall picture of the efficiency and dynamics of the screening process.
+
+We were given four data sets containing the details of the screening process at the four major airfields of the nation. Our goal was to explain the data sets through data definitions and explanations, to explore the data sets by visualizing and analyzing their variables and possible relationships, and finally to perform the queuing analysis to predict the expected wait time at each airfield.
+
+### Data Definition
+
+```{r}
+AUC<-read.csv("BASA_AUC_2028_912.csv", header = TRUE)
+Flight<-read.csv("dat_F_sub.csv")
+Passenger<-read.csv("dat_P_sub_c.csv")
+Y2026<-read.csv("years20262030.csv")
+```
+
+The four data sets had common variables. The AUC data set was the biggest one containing most of the common variables, hence we used it as the main data set. We compared the variables between AUC and Passenger data and noticed that Passenger had unique variables with suffix "Flag", which we thought was not useful for our analysis. Other unique variables in Passenger were presented in other tables as well, hence these variables were omitted in our Queuing Analysis section. 
+```{r}
+setdiff(colnames(Passenger), colnames(AUC))
+```
+
+Similarly, the Flight data had variables that weren't really relevant or useful for our analysis, hence we also omitted them in Queuing Analysis.
+```{r}
+setdiff(colnames(Flight), colnames(AUC))
+```
+
+AUC and Y2026 had the same variables, except that Y2026 has airfields other than Auckland.
+
+We gave a proper data definition in the following Table() for AUC data and for the unique variables in Passenger and Flight data in Table () and Table(). 
+
+```{r}
+DataDict<-AUC%>%select(-X)
+DataDict<-data.frame(
+  Variables=colnames(DataDict),
+  Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),1)), collapse = ", ")),
+  Number.Unique=sapply(DataDict, function(x) length(unique(x))),
+  PctMissing=sapply(DataDict, function(x) paste0(round(sum(is.na(x))/length(x), 4)*100,"%" ) ),
+  Comment=c("Airfield from which the passenger departed: Auckland [AUC], Chebucto [CWL], Queenston [QUE], SaintFrancois [SAF]",
+            "the date and time at which passengers exited the main queue S2, recorded to the nearest minute",
+            "The waiting time of passenger in queue from S1 to S2, rounded up to the minute",
+            "The number of security agents at S1 when passenger was scaned",
+            "The number of security agents at S2 when passenger was scaned",
+            "The average number of security agents at S1 and S2",
+            "scheduled departure time",
+            "actual departure time" ,
+            "city of destination",
+            "country of destination",
+            "order",
+            "ID for each passenger exited the main queue",
+            "Departure_Date",
+            "Departure_Time (recored in seconds: h*3600+m*60+s)",
+            "departure time of day",
+            "departure day is weekend or weeakday",
+            "departure day in a week",
+            "month of departure",
+            "season of departure",
+            "year of departure"
+            ), row.names = NULL
+)
+
+DataDict%>%kable(booktabs = TRUE,caption = "AUC Variable Definition")%>%
+  kable_styling(font_size=7, latex_options=c("striped","hold_position"))%>%
+  column_spec(2, width = "8em")%>%
+  column_spec(5, width = "15em")%>%
+  row_spec(0,bold=TRUE)
+```
+
+```{r}
+DataDict<-Passenger%>%select(setdiff(colnames(Passenger), colnames(AUC)))
+DataDict<-data.frame(
+  Variables=colnames(DataDict),
+  Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),2)), collapse = ", ")),
+  Number.Unique=sapply(DataDict, function(x) length(unique(x))),
+  PctMissing=sapply(DataDict, function(x) paste0(round(sum(is.na(x))/length(x), 4)*100,"%" ) ), 
+  Comment=c("Valid passenger ID",
+            "If Wait_Time is NA or not",
+            "If S2 Schedule departure is NA or not",
+            "If S2 Actural departure is NA or not",
+            "If Schedule departure is NA or not",
+            "Flight ID",
+            "Delay in seconds"
+            ),
+  row.names = NULL
+)
+
+DataDict%>%kable(booktabs = TRUE,caption = "Passenger Variable Definition")%>%
+  kable_styling(font_size=10, latex_options=c("striped","scale_down","hold_position"))%>%
+  column_spec(2, width = "8em")%>%
+  row_spec(0,bold=TRUE)
+```
+
+```{r}
+DataDict<-Flight%>%select(setdiff(colnames(Flight), colnames(AUC)))
+DataDict<-data.frame(
+  Variables=colnames(DataDict),
+  Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),2)), collapse = ", ")),
+  Number.Unique=sapply(DataDict, function(x) length(unique(x))),
+  PctMissing=sapply(DataDict, function(x) paste0(round(sum(is.na(x))/length(x), 4)*100,"%" ) ),
+  Comment=c("Flight ID",
+            "total number of passengers",
+            "actual number of passengers",
+            "mimimum waiting time",
+            "mean waiting time",
+            "median waiting time",
+            "maximum waiting time",
+            "mean length of waiting time",
+            "mean_City_Flag",
+            "mode_BFO_Dest_City",
+            "sum of the mode in the city",
+            "number of destinated city",
+            "mode_BFO_Dest_Country_Code",
+            "sum of the mode in the country",
+            "number of destinated country",
+            "delay second"
+            ), row.names = NULL
+)
+
+DataDict%>%kable(booktabs = TRUE,caption = "Flight Variable Definition")%>%
+  kable_styling(font_size=10, latex_options=c("striped","scale_down","hold_position"))%>%
+  column_spec(2, width = "8em")%>%
+  row_spec(0,bold=TRUE)
+```
+
+We must also pointed out that there were flaws in these data sets that we had to correct. The AUC data contained the useful information from the Passenger data, as we have explained earlier. However there was a discrepancy of 10 minutes between the AUC Schedule Departure time and the Passenger Schedule Departure time. We believed that this difference is a minor mistake. AUC data contained the least amount of mistakes overall, hence another reason for us to use the AUC data directly in our Queuing analysis. In addition, The Period_of_Week variable did not match with the Day_of_Week, therefore we have cleaned all these flaws before doing the subsequent analyses.
+
+```{r}
+#clean AUC data:
+AUC<-AUC%>%mutate(Period_of_Week=case_when(
+    Day_of_Week=="6 - SAT" | Day_of_Week=="7 - SUN" ~ "2 - WEEKEND",
+    .default = "1 - WEEKDAY"
+))
+```
+
+```{r}
+result <- AUC %>%
+  group_by(Year, Season, Time_of_Day, Day_of_Week) %>%  # 按照年、季度和时间段分组
+  summarise(
+   Meantime= mean(Wait_Time),# 计算均值或其他汇总统计量
+   Meanservers=mean(C0),
+   pro_ser1=sum(C0== 1)/n(),
+   pro_ser2=sum(C0== 2)/n(),
+   pro_ser3=sum(C0== 3)/n(),
+   ave_ser=pro_ser1*1+pro_ser2*2+pro_ser2*3,
+   TotalCount = n(),# 统计每个组的数据数量
+    .groups = "drop"
+  )
+```
+
+```{r, eval=FALSE}
+# 定义参数
+lambda <- 5  # 平均到达率 (arrivals per time unit)
+mu <- 6      # 平均服务率 (services per time unit)
+
+# 模拟时间
+sim_time <- 1000
+
+# 初始化变量
+queue <- numeric(0)  # 队列
+clock <- 0           # 时钟
+arrivals <- 0        # 到达数
+departures <- 0      # 服务完成数
+
+# 模拟循环
+while (clock < sim_time) {
+  # 计算下一个到达和服务时间
+  inter_arrival_time <- rexp(1, lambda)
+  arrival_time <- clock + inter_arrival_time
+  
+  service_time <- rexp(1, mu)
+  departure_time <- clock + service_time
+  
+  # 处理到达事件
+  if (arrival_time < departure_time || departures == 0) {
+    arrivals <- arrivals + 1
+    queue <- c(queue, arrival_time)
+    clock <- arrival_time
+  } else {  # 处理服务完成事件
+    departures <- departures + 1
+    queue <- queue[-1]
+    clock <- departure_time
+  }
+}
+
+# 计算模拟结果
+average_waiting_time <- sum(departure_time - queue) / departures
+
+# 打印结果
+cat("Average Waiting Time:", average_waiting_time, "\n")
+cat("Total Arrivals:", arrivals, "\n")
+cat("Total Departures:", departures, "\n")
+```
+
+```{r}
+data_4<-read.csv("years20262030.csv")
+```
+
+
+### Data exploration
+
+### Queuing Analysis
 
 ### References
 
