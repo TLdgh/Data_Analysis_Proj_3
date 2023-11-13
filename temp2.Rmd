@@ -36,28 +36,6 @@ BASA_WEEKEND_AUTUMN <- BASA_WEEKEND %>% filter(Season == "4 - AUTUMN")
 ```
 
 ```{r}
-FilterByTimeS2 <- function(df, start_time, end_time, interval_minutes) {
-  df$S2 <- as.POSIXct(df$S2)
-  df$Time <- format(df$S2, "%H:%M:%S")
-  result <- list()
-
-  for (start in seq(0, 24 * 60, by = interval_minutes)) {
-    end <- start + interval_minutes
-    interval_start_time <- sprintf("%02d:%02d:%02d", start %/% 60, start %% 60, 0)
-    interval_end_time <- sprintf("%02d:%02d:%02d", end %/% 60, end %% 60, 0)
-
-    # Filter rows within the current time interval
-    filtered_df <- df[df$Time >= interval_start_time & df$Time < interval_end_time, ]
-
-    # Add the filtered data frame to the list
-    result[[paste(interval_start_time, interval_end_time, sep = "_")]] <- filtered_df
-  }
-
-  return(result)
-}
-```
-
-```{r}
 # fill missing wait time with mean
 fill_missing <- function(df){
   mean_value <- round(mean(df$Wait_Time, na.rm = TRUE),0)
@@ -67,23 +45,23 @@ fill_missing <- function(df){
 ```
 
 ```{r}
-List1 <- list(BASA_WEEKDAY_SUMMER,BASA_WEEKDAY_AUTUMN,BASA_WEEKEND_SUMMER,BASA_WEEKEND_AUTUMN)
+List_1 <- list(BASA_WEEKDAY_SUMMER,BASA_WEEKDAY_AUTUMN,BASA_WEEKEND_SUMMER,BASA_WEEKEND_AUTUMN)
 ```
 
 ```{r}
-# create cluster by 4 hours interval
-# List3 stores 24 subset for S2
-time_interval <- c("00:00:00_04:00:00","04:00:00_08:00:00","08:00:00_12:00:00","12:00:00_16:00:00","16:00:00_20:00:00","20:00:00_24:00:00")
+# create cluster by Time of Day
+# List3 stores 16 subset for S2
+TimeDay <- c("1 - NIGHT","2 - MORNING","3 - AFTERNOON","4 - EVENING")
 BASA_fill <- data.frame()
-List3 <- list()
+List_3 <- list()
 
 
 for(i in c(1,2,3,4)){
-  filter_df <- FilterByTimeS2(List1[[i]], start_time = "00:00:00", end_time = "24:00:00", 240)
   k=1
-  for(j in time_interval){
-    filter_fill <- fill_missing(filter_df[[j]])
-    List3[[(i-1)*6+k]] <- filter_fill
+  for(j in TimeDay){
+    filter_df <- List_1[[i]] %>% filter(Time_of_Day == j)
+    filter_fill <- fill_missing(filter_df)
+    List_3[[(i-1)*4+k]] <- filter_fill
     BASA_fill <- rbind(BASA_fill,filter_fill)
     k=k+1
   }
@@ -96,28 +74,6 @@ BASA_fill$S2 <- as.POSIXct(BASA_fill$S2, format = "%Y-%m-%d %H:%M:%S")
 BASA_fill$S1 <- BASA_fill$S2 - as.numeric(BASA_fill$Wait_Time) * 60 
 sum(is.na(BASA$S1))
 sum(is.na(BASA$S2))
-```
-
-```{r}
-FilterByTimeS1 <- function(df, start_time, end_time, interval_minutes) {
-  df$S1 <- as.POSIXct(df$S1)
-  df$Time <- format(df$S1, "%H:%M:%S")
-  result <- list()
-
-  for (start in seq(0, 24 * 60, by = interval_minutes)) {
-    end <- start + interval_minutes
-    interval_start_time <- sprintf("%02d:%02d:%02d", start %/% 60, start %% 60, 0)
-    interval_end_time <- sprintf("%02d:%02d:%02d", end %/% 60, end %% 60, 0)
-
-    # Filter rows within the current time interval
-    filtered_df <- df[df$Time >= interval_start_time & df$Time < interval_end_time, ]
-
-    # Add the filtered data frame to the list
-    result[[paste(interval_start_time, interval_end_time, sep = "_")]] <- filtered_df
-  }
-
-  return(result)
-}
 ```
 
 ```{r}
@@ -137,21 +93,20 @@ BASA_WEEKEND_AUTUMN <- BASA_WEEKEND %>% filter(Season == "4 - AUTUMN")
 ```
 
 ```{r}
-List2 <- list(BASA_WEEKDAY_SUMMER,BASA_WEEKDAY_AUTUMN,BASA_WEEKEND_SUMMER,BASA_WEEKEND_AUTUMN)
+List_2 <- list(BASA_WEEKDAY_SUMMER,BASA_WEEKDAY_AUTUMN,BASA_WEEKEND_SUMMER,BASA_WEEKEND_AUTUMN)
 ```
 
 ```{r}
-# List4 stores 24 subset for S1
+# List_4 stores 16 subset
 Result <- data.frame()
-List4 <- list()
+List_4 <- list()
 for(i in c(1,2,3,4)){
-  filter_df <- FilterByTimeS1(List2[[i]], start_time = "00:00:00", end_time = "24:00:00", 240)
   k=1
-  for(j in time_interval){
+  for(j in TimeDay){
     if(i == 1){
-      cluster <- filter_df[[j]]
-      List4[[(i-1)*6+k]] <- cluster
-      lambda <-nrow(cluster)/(13*5*4)
+      cluster <- List_2[[i]] %>% filter(Time_of_Day == j)
+      List_4[[(i-1)*4+k]] <- cluster
+      lambda <-nrow(cluster)/(13*5*6)
       Wq <-mean(cluster$Wait_Time)
       mu <- (Wq*lambda+sqrt((Wq*lambda)^2+4*Wq*lambda))/(2*Wq)
       c <- mean(cluster$C0,na.rm = TRUE)
@@ -159,9 +114,9 @@ for(i in c(1,2,3,4)){
       k=k+1
     }
     else if(i == 2){
-      cluster <- filter_df[[j]]
-      List4[[(i-1)*6+k]] <- cluster
-      lambda <- nrow(cluster)/(13*5*4)
+      cluster <- List_2[[i]] %>% filter(Time_of_Day == j)
+      List_4[[(i-1)*4+k]] <- cluster
+      lambda <- nrow(cluster)/(13*5*6)
       Wq <- mean(cluster$Wait_Time)
       mu <- (Wq*lambda+sqrt((Wq*lambda)^2+4*Wq*lambda))/(2*Wq)
       c <- mean(cluster$C0,na.rm = TRUE)
@@ -169,9 +124,9 @@ for(i in c(1,2,3,4)){
       k=k+1
     }
     else if(i == 3){
-      cluster <- filter_df[[j]]
-      List4[[(i-1)*6+k]] <- cluster
-      lambda <- nrow(cluster)/(13*2*4)
+      cluster <- List_2[[i]] %>% filter(Time_of_Day == j)
+      List_4[[(i-1)*4+k]] <- cluster
+      lambda <- nrow(cluster)/(13*2*6)
       Wq <- mean(cluster$Wait_Time)
       mu <- (Wq*lambda+sqrt((Wq*lambda)^2+4*Wq*lambda))/(2*Wq)
       c <- mean(cluster$C0,na.rm = TRUE)
@@ -179,9 +134,9 @@ for(i in c(1,2,3,4)){
       k=k+1
     }
     else{
-      cluster <- filter_df[[j]]
-      List4[[(i-1)*6+k]] <- cluster
-      lambda <- nrow(cluster)/(13*2*4)
+      cluster <- List_2[[i]] %>% filter(Time_of_Day == j)
+      List_4[[(i-1)*4+k]] <- cluster
+      lambda <- nrow(cluster)/(13*2*6)
       Wq <- mean(cluster$Wait_Time)
       mu <- (Wq*lambda+sqrt((Wq*lambda)^2+4*Wq*lambda))/(2*Wq)
       c <- mean(cluster$C0,na.rm = TRUE)
@@ -190,7 +145,7 @@ for(i in c(1,2,3,4)){
     }
   }
 }
-colnames(Result) <- c("Season","Period_of_week","Time_Period","Arrival_rate","Avg_Wait_Time","Service_rate","Avg_servers")
+colnames(Result) <- c("Season","Period_of_week","Time_of_day","Arrival_rate","Avg_Wait_Time","Service_rate","Avg_servers")
 View(Result)
 ```
 
@@ -269,26 +224,11 @@ demo.mm1 <- function(T0=0, T1=10000, lambda, mu, DEBUG=FALSE){
 ```{r}
 # test
 set.seed(1)
-demo.mm1(T0=0,T1=100000, 6.55769230769231
-,6.63054265619527,DEBUG=FALSE)
-mean(List3[[2]]$Wait_Time)
-mean(List4[[2]]$Wait_Time)
-(mean(List3[[2]]$Wait_Time)+mean(List4[[2]]$Wait_Time))/2
-```
-
-```{r}
-mean(List3[[2]]$Wait_Time)
-mean(List3[[3]]$Wait_Time)
-mean(List3[[4]]$Wait_Time)
-mean(List3[[5]]$Wait_Time)
-mean(List3[[6]]$Wait_Time)
-```
-
-```{r}
-set.seed(1)
-for(n in 1:nrow(Result[-c(1,7,13,19),])){
-  demo.mm1(T0=0,T1=100000, as.numeric(Result[-c(1,7,13,19),]$Arrival_rate[n]),as.numeric(Result[-c(1,7,13,19),]$Service_rate[n]),DEBUG=FALSE)
-  }
+demo.mm1(T0=0,T1=100000, 5.78205128205128
+,5.86889819617233,DEBUG=FALSE)
+mean(List_3[[2]]$Wait_Time)
+mean(List_4[[2]]$Wait_Time)
+(mean(List_3[[2]]$Wait_Time)+mean(List_4[[2]]$Wait_Time))/2
 ```
 
 Regression Model
@@ -304,39 +244,39 @@ regression_data <- data.frame(
   service_rate_perserver = as.numeric(Result$Service_rate)/as.numeric(Result$Avg_servers)
 )
 # Regression model
-regression_model<- lm(service_rate_perserver ~ arrival_rate_perserver,data = regression_data[-c(1,7,13,19),])
+regression_model<- lm(service_rate_perserver ~ arrival_rate_perserver,data = regression_data[-c(1,9,13),])
 summary(regression_model)
 ```
 
-$service\_rate\_perserver=0.997245*arrival\_rate\_perserver+0.249409$
-$\frac{\mu}{c}=0.997245 \frac{\lambda}{c}+0.249409$
-$\mu=0.997245\lambda+0.249409c$
-implies that $\hat{a}=0.249409$ and $\hat{b}=0.997245$, where $\lambda$ is the arrival rate, $c$ is the average number of servers, $\mu$ is the service rate.
+$service\_rate\_perserver=1.000782*arrival\_rate\_perserver+0.133171$
+$\frac{\mu}{c}=1.000782 \frac{\lambda}{c}+0.133171$
+$\mu=1.000782\lambda+0.133171c$
+implies that $\hat{a}=0.133171$ and $\hat{b}=1.000782$, where $\lambda$ is the arrival rate, $c$ is the average number of servers, $\mu$ is the service rate.
 
 ```{r}
-plot(regression_data[-c(1,7,13,19),]$arrival_rate_perserver, regression_data[-c(1,7,13,19),]$service_rate_perserver, pch = 16, col = "blue", xlab = "Arrival rate per server", ylab = "Service rate per server", main = "Regression Line and Points")
+plot(regression_data[-c(1,9,13),]$arrival_rate_perserver, regression_data[-c(1,9,13),]$service_rate_perserver, pch = 16, col = "blue", xlab = "Arrival rate per server", ylab = "Service rate per server", main = "Regression Line and Points")
 
 abline(regression_model, col = "red")
 
 legend("topleft", legend = c("Points", "Regression Line"), col = c("blue", "red"), pch = c(16, NA), lty = c(NA, 1))
 ```
 
-In our data, we have $\lambda<\hat{\mu}$, QoS level $\mathbb{P}(x)=1-\frac{\lambda}{\hat{a}c+\hat{b}\lambda}e^{-(\hat{a}c+\hat{b}\lambda-\lambda)x}=1-\frac{\lambda}{0.249409c+0.997245\lambda}e^{-(0.249409c+0.997245\lambda-\lambda)x}$
+In our data, we have $\lambda<\hat{\mu}$, QoS level $\mathbb{P}(x)=1-\frac{\lambda}{\hat{a}c+\hat{b}\lambda}e^{-(\hat{a}c+\hat{b}\lambda-\lambda)x}=1-\frac{\lambda}{0.133171c+1.000782\lambda}e^{-(0.133171c+1.000782\lambda-\lambda)x}$
 
 ```{r}
 # prediction of prob of waittime <x for given cluster related information and time x
-predict_prob_waittime <- function(season, PeriodOfWeek, TimePeriod,x){
-  match_set <- Result %>% filter(Season == season,Period_of_week == PeriodOfWeek,Time_Period == TimePeriod)
+predict_prob_waittime <- function(season, PeriodOfWeek, PeriodOfDay,x){
+  match_set <- Result %>% filter(Season == season,Period_of_week == PeriodOfWeek,Time_of_day == PeriodOfDay)
   my_lambda = as.numeric(match_set$Arrival_rate)
   my_mu = as.numeric(match_set$Service_rate)
   my_c = as.numeric(match_set$Avg_servers)
-  a_hat = 0.249409
-  b_hat = 0.997245
+  a_hat = 0.133171
+  b_hat = 1.000782
   Pr = 1-my_lambda/(a_hat*my_c+b_hat*my_lambda)*exp(-(a_hat*my_c+b_hat*my_lambda-my_lambda)*x)
   return(Pr)
 }
 ```
 
 ```{r}
-predict_prob_waittime("Summer","Weekday","12:00:00_16:00:00",15)
+predict_prob_waittime("Summer","Weekday","2 - MORNING",15)
 ```
