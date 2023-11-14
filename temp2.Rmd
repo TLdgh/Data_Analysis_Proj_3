@@ -9,6 +9,7 @@ output: pdf_document
 library(dplyr)
 library(lubridate)
 library(scales)
+library(ggplot2)
 ```
 
 ```{r}
@@ -318,4 +319,43 @@ for(i in state_week){
 }
 View(Performance)
 colnames(Performance) <- c("Season","Period_of_week","Time_of_day","Count","Avg_wait_time","Pr(<5 mins)","Pr(<10 mins)","Pr(<15 mins)","Pr(<20 mins)","Pr(<25 mins)","Pr(<30 mins)")
+```
+
+```{r}
+# test
+a_hat = 0.133171
+b_hat = 1.000782
+my_lambda <-as.numeric( Result[2,"Arrival_rate"])
+my_c <- as.numeric(Result[2,"Avg_servers"])
+cdf_function <- function(x) {
+  1 - my_lambda / (a_hat * my_c + b_hat * my_lambda) * exp(-(a_hat * my_c + b_hat * my_lambda - my_lambda) * x)
+}
+x_values <- seq(0, 80, length.out = 1000)
+cdf_values <- sapply(x_values, cdf_function)
+plot(x_values, cdf_values, type = 'l', col = 'blue', ylab = 'CDF', xlab = 'Time in mins', main = 'CDF plot')
+```
+
+```{r}
+Plot <- list()
+for(i in 1:nrow(Result)){
+  if(i==1 | i==9 | i==13){
+    Plot[[i]] <- "Plot fails since Wait time is NA"
+  }
+  else{
+    my_lambda <-as.numeric( Result[i,"Arrival_rate"])
+    my_c <- as.numeric(Result[i,"Avg_servers"])
+    cdf_function <- function(x) {
+      1 - my_lambda / (a_hat * my_c + b_hat * my_lambda) * exp(-(a_hat * my_c + b_hat * my_lambda - my_lambda) * x)
+      }
+    x_values <- seq(0, max(List_4[[i]]$Wait_Time)+5, length.out = 1000)
+    cdf_values <- sapply(x_values, cdf_function)
+    #graph <- plot(x_values, cdf_values, type = "l", col = "blue", ylab = "CDF", xlab = "Time in mins", main = c(Result$Season[i],Result$Period_of_week[i],Result$Time_of_day[i],"CDF"))
+    plot_df <- data.frame(Time = x_values, CDF = cdf_values)
+    graph <- ggplot(plot_df, aes(x = Time, y = CDF)) +
+      geom_line(color = "blue") +
+      labs(title = paste(Result$Season[i], Result$Period_of_week[i], Result$Time_of_day[i], "CDF"), x = "Time in mins", y = "CDF")
+    Plot[[i]] <- graph
+    print(Plot[[i]])
+  }
+}
 ```
