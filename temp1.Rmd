@@ -18,56 +18,23 @@ years <- read.csv("years20262030.csv", header = TRUE)
 ```
 
 ```{r}
-BASA$Period_of_Week[BASA$Period_of_Week == "1 - WEEKDAY"] <- "temp"
-BASA$Period_of_Week[BASA$Period_of_Week == "2 - WEEKEND"] <- "1 - WEEKDAY"
-BASA$Period_of_Week[BASA$Period_of_Week == "temp"] <- "2 - WEEKEND"
+#clean BASA data:
+BASA<-BASA%>%mutate(Period_of_Week=case_when(
+    Day_of_Week=="6 - SAT" | Day_of_Week=="7 - SUN" ~ "2 - WEEKEND",
+    .default = "1 - WEEKDAY"
+))
 
-BASA_WEEKDAY <- BASA %>% filter(Period_of_Week == "1 - WEEKDAY" & Day_of_Week %in% c("	
-1 - MON","2 - TUE","	
-3 - WED","4 - THU","	
-5 - FRI"))
+#make list of 16 clusters:
+BASA <- split(BASA, list(BASA$Season, BASA$Period_of_Week, BASA$Time_of_Day))
 
-BASA_WEEKEND <- BASA %>% filter(Period_of_Week == "2 - WEEKEND" & Day_of_Week %in% c("6 - SAT","7 - SUN"))
-
-BASA_WEEKDAY_SUMMER <- BASA_WEEKDAY %>% filter(Season == "3 - SUMMER")
-BASA_WEEKDAY_AUTUMN <- BASA_WEEKDAY %>% filter(Season == "4 - AUTUMN")
-BASA_WEEKEND_SUMMER <- BASA_WEEKEND %>% filter(Season == "3 - SUMMER")
-BASA_WEEKEND_AUTUMN <- BASA_WEEKEND %>% filter(Season == "4 - AUTUMN")
-```
-
-```{r}
-FilterByTimeS2 <- function(df, start_time, end_time, interval_minutes) {
-  df$S2 <- as.POSIXct(df$S2)
-  df$Time <- format(df$S2, "%H:%M:%S")
-  result <- list()
-
-  for (start in seq(0, 24 * 60, by = interval_minutes)) {
-    end <- start + interval_minutes
-    interval_start_time <- sprintf("%02d:%02d:%02d", start %/% 60, start %% 60, 0)
-    interval_end_time <- sprintf("%02d:%02d:%02d", end %/% 60, end %% 60, 0)
-
-    # Filter rows within the current time interval
-    filtered_df <- df[df$Time >= interval_start_time & df$Time < interval_end_time, ]
-
-    # Add the filtered data frame to the list
-    result[[paste(interval_start_time, interval_end_time, sep = "_")]] <- filtered_df
-  }
-
-  return(result)
-}
-```
-
-```{r}
 # fill missing wait time with mean
 fill_missing <- function(df){
   mean_value <- round(mean(df$Wait_Time, na.rm = TRUE),0)
   df$Wait_Time[is.na(df$Wait_Time)] <- mean_value
   return(df)
 }
-```
 
-```{r}
-List1 <- list(BASA_WEEKDAY_SUMMER,BASA_WEEKDAY_AUTUMN,BASA_WEEKEND_SUMMER,BASA_WEEKEND_AUTUMN)
+BASA_fill<-map(BASA, fill_missing)
 ```
 
 ```{r}
@@ -88,14 +55,6 @@ for(i in c(1,2,3,4)){
     k=k+1
   }
 }
-```
-
-```{r}
-# Ccalculate S1 = S2-Wait_Time
-BASA_fill$S2 <- as.POSIXct(BASA_fill$S2, format = "%Y-%m-%d %H:%M:%S")
-BASA_fill$S1 <- BASA_fill$S2 - as.numeric(BASA_fill$Wait_Time) * 60 
-sum(is.na(BASA$S1))
-sum(is.na(BASA$S2))
 ```
 
 ```{r}
@@ -121,12 +80,9 @@ FilterByTimeS1 <- function(df, start_time, end_time, interval_minutes) {
 ```
 
 ```{r}
-BASA_WEEKDAY <- BASA_fill %>% filter(Period_of_Week == "1 - WEEKDAY" & Day_of_Week %in% c("	
-1 - MON","2 - TUE","	
-3 - WED","4 - THU","	
-5 - FRI"))
+BASA_WEEKDAY <- BASA_fill %>% filter(Period_of_Week == "1 - WEEKDAY")
 
-BASA_WEEKEND <- BASA_fill %>% filter(Period_of_Week == "2 - WEEKEND" & Day_of_Week %in% c("6 - SAT","7 - SUN"))
+BASA_WEEKEND <- BASA_fill %>% filter(Period_of_Week == "2 - WEEKEND")
 ```
 
 ```{r}
