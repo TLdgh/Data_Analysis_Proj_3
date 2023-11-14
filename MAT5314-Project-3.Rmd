@@ -38,28 +38,28 @@ We were given four data sets containing the details of the screening process at 
 ### Data Definition
 
 ```{r}
-AUC<-read.csv("BASA_AUC_2028_912.csv", header = TRUE)
+BASA<-read.csv("BASA_AUC_2028_912.csv", header = TRUE)
 Flight<-read.csv("dat_F_sub.csv")
 Passenger<-read.csv("dat_P_sub_c.csv")
 Y2026<-read.csv("years20262030.csv")
 ```
 
-The four data sets had common variables. The AUC data set was the biggest one containing most of the common variables, hence we used it as the main data set. We compared the variables between AUC and Passenger data and noticed that Passenger had unique variables with suffix "Flag", which we thought was not useful for our analysis. Other unique variables in Passenger were presented in other tables as well, hence these variables were omitted in our Queuing Analysis section. 
+The four data sets had common variables. The BASA data set was the biggest one containing most of the common variables, hence we used it as the main data set. We compared the variables between BASA and Passenger data and noticed that Passenger had unique variables with suffix "Flag", which we thought was not useful for our analysis. Other unique variables in Passenger were presented in other tables as well, hence these variables were omitted in our Queuing Analysis section. 
 ```{r}
-setdiff(colnames(Passenger), colnames(AUC))
+setdiff(colnames(Passenger), colnames(BASA))
 ```
 
 Similarly, the Flight data had variables that weren't really relevant or useful for our analysis, hence we also omitted them in Queuing Analysis.
 ```{r}
-setdiff(colnames(Flight), colnames(AUC))
+setdiff(colnames(Flight), colnames(BASA))
 ```
 
-AUC and Y2026 had the same variables, except that Y2026 has airfields other than Auckland.
+BASA and Y2026 had the same variables, except that Y2026 has airfields other than Auckland.
 
-We gave a proper data definition in the following Table() for AUC data and for the unique variables in Passenger and Flight data in Table () and Table(). 
+We gave a proper data definition in the following Table() for BASA data and for the unique variables in Passenger and Flight data in Table () and Table(). 
 
 ```{r}
-DataDict<-AUC%>%select(-X)
+DataDict<-BASA%>%select(-X)
 DataDict<-data.frame(
   Variables=colnames(DataDict),
   Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),1)), collapse = ", ")),
@@ -88,7 +88,7 @@ DataDict<-data.frame(
             ), row.names = NULL
 )
 
-DataDict%>%kable(booktabs = TRUE,caption = "AUC Variable Definition")%>%
+DataDict%>%kable(booktabs = TRUE,caption = "BASA Variable Definition")%>%
   kable_styling(font_size=7, latex_options=c("striped","hold_position"))%>%
   column_spec(2, width = "8em")%>%
   column_spec(5, width = "15em")%>%
@@ -96,7 +96,7 @@ DataDict%>%kable(booktabs = TRUE,caption = "AUC Variable Definition")%>%
 ```
 
 ```{r}
-DataDict<-Passenger%>%select(setdiff(colnames(Passenger), colnames(AUC)))
+DataDict<-Passenger%>%select(setdiff(colnames(Passenger), colnames(BASA)))
 DataDict<-data.frame(
   Variables=colnames(DataDict),
   Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),2)), collapse = ", ")),
@@ -120,7 +120,7 @@ DataDict%>%kable(booktabs = TRUE,caption = "Passenger Variable Definition")%>%
 ```
 
 ```{r}
-DataDict<-Flight%>%select(setdiff(colnames(Flight), colnames(AUC)))
+DataDict<-Flight%>%select(setdiff(colnames(Flight), colnames(BASA)))
 DataDict<-data.frame(
   Variables=colnames(DataDict),
   Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),2)), collapse = ", ")),
@@ -151,18 +151,20 @@ DataDict%>%kable(booktabs = TRUE,caption = "Flight Variable Definition")%>%
   row_spec(0,bold=TRUE)
 ```
 
-We must also pointed out that there were flaws in these data sets that we had to correct. The AUC data contained the useful information from the Passenger data, as we have explained earlier. However there was a discrepancy of 10 minutes between the AUC Schedule Departure time and the Passenger Schedule Departure time. We believed that this difference is a minor mistake. AUC data contained the least amount of mistakes overall, hence another reason for us to use the AUC data directly in our Queuing analysis. In addition, The Period_of_Week variable did not match with the Day_of_Week, therefore we have cleaned all these flaws before doing the subsequent analyses.
+We must also pointed out that there were flaws in these data sets that we had to correct. The BASA data contained the useful information from the Passenger data, as we have explained earlier. However there was a discrepancy of 10 minutes between the BASA Schedule Departure time and the Passenger Schedule Departure time. We believed that this difference is a minor mistake. BASA data contained the least amount of mistakes overall, hence another reason for us to use the BASA data directly in our Queuing analysis. In addition, The Period_of_Week variable did not match with the Day_of_Week, therefore we have cleaned all these flaws before doing the subsequent analyses.
 
 ```{r}
-#clean AUC data:
-AUC<-AUC%>%mutate(Period_of_Week=case_when(
+#clean BASA data:
+BASA<-BASA%>%mutate(Period_of_Week=case_when(
     Day_of_Week=="6 - SAT" | Day_of_Week=="7 - SUN" ~ "2 - WEEKEND",
     .default = "1 - WEEKDAY"
-))
+), S2=as.POSIXct(S2))
+
+#BASA[which(BASA$Time_of_Day=="1 - NIGHT"),"Time_of_Day"]<-"4 - EVENING"
 ```
 
 ```{r}
-result <- AUC %>%
+result <- BASA %>%
   group_by(Year, Season, Time_of_Day, Day_of_Week) %>%  # 按照年、季度和时间段分组
   summarise(
    Meantime= mean(Wait_Time),# 计算均值或其他汇总统计量
@@ -228,6 +230,110 @@ data_4<-read.csv("years20262030.csv")
 ### Data exploration
 
 ### Queuing Analysis
+
+```{r}
+#make list of 16 clusters:
+BASA_fill <- split(BASA, list(BASA$Season, BASA$Period_of_Week, BASA$Time_of_Day))
+
+# fill missing wait time with mean
+fill_missing <- function(df){
+  mean_value <- round(mean(df$Wait_Time, na.rm = TRUE),0)
+  df$Wait_Time[is.na(df$Wait_Time)] <- mean_value
+  return(df)
+}
+
+BASA_fill<-map(BASA_fill, fill_missing)
+```
+
+```{r}
+# Ccalculate S1 = S2-Wait_Time
+BASA_fill<-map(BASA_fill, function(df){
+  df$S2<-as.POSIXct(df$S2, format = "%Y-%m-%d %H:%M:%S")
+  df$S1<-df$S2 - as.numeric(df$Wait_Time) * 60 
+  return(df)})
+```
+
+```{r}
+MakeTbl<-function(cluster){
+  if(is_empty(unique(cluster$Period_of_Week))==TRUE){
+    Result <- data.frame(Season=NaN, Period_of_Week=NaN,Time_of_Day=NaN,Count=NaN,Minute=NaN,Arrival_Rate=NaN,Avg_Wait_Time=NaN,Service_Rate=NaN,Avg_Servers=NaN)
+  }else{
+    Minute<-difftime(max(cluster$S2),min(cluster$S2), units = "mins")%>%as.numeric()
+    lambda <-nrow(cluster)/Minute
+    Count<-nrow(cluster)
+    Wq <- mean(cluster$Wait_Time)
+    mu <- (Wq*lambda+sqrt((Wq*lambda)^2+4*Wq*lambda))/(2*Wq)
+    c <- mean(cluster$C0,na.rm = TRUE)
+    
+    Result <- data.frame(Season=unique(cluster$Season),Period_of_Week=unique(cluster$Period_of_Week),
+                         Time_of_Day=unique(cluster$Time_of_Day),Count,Minute=Minute,Arrival_Rate=lambda,
+                         Avg_Wait_Time=Wq,Service_Rate=mu,Avg_Servers=c)
+  }
+  return(Result)
+}
+Result<-do.call(rbind, map(BASA_fill, MakeTbl))
+```
+
+```{r}
+Result%>%select(-c(Season, Period_of_Week,Time_of_Day))%>%
+  kable(booktabs = TRUE,caption = "Result")%>%
+  kable_styling(font_size=7, latex_options=c("striped","scale_down", "hold_position"))%>%
+  row_spec(0,bold=TRUE)
+```
+
+Regression Model
+$\mu=\mu(\lambda,c)=ac+b\lambda$
+$\frac{\mu}{c}=b\frac{\lambda}{c}+a$
+
+```{r}
+regression_data <-Result%>%transmute(Avg_Servers, Arrival_Rate,Service_Rate,
+                                    arrival_rate_perserver=Arrival_Rate/Avg_Servers,
+                                    service_rate_perserver=Service_Rate/Avg_Servers)
+
+# Regression model
+regression_model<- lm(service_rate_perserver ~ arrival_rate_perserver,data = regression_data[-c(1,9,13),])
+summary(regression_model)
+```
+
+```{r}
+regression_data%>%
+  kable(booktabs = TRUE,caption = "Regression Data")%>%
+  kable_styling(font_size=7, latex_options=c("striped","scale_down", "hold_position"))%>%
+  row_spec(0,bold=TRUE)
+```
+
+$service\_rate\_perserver=1.000782*arrival\_rate\_perserver+0.133171$
+$\frac{\mu}{c}=1.000782 \frac{\lambda}{c}+0.133171$
+$\mu=1.000782\lambda+0.133171c$
+implies that $\hat{a}=0.133171$ and $\hat{b}=1.000782$, where $\lambda$ is the arrival rate, $c$ is the average number of servers, $\mu$ is the service rate.
+
+```{r}
+plot(regression_data[-c(1,9,13),]$arrival_rate_perserver, regression_data[-c(1,9,13),]$service_rate_perserver, pch = 16, col = "blue", xlab = "Arrival rate per server", ylab = "Service rate per server", main = "Regression Line and Points")
+
+abline(regression_model, col = "red")
+
+legend("topleft", legend = c("Points", "Regression Line"), col = c("blue", "red"), pch = c(16, NA), lty = c(NA, 1))
+```
+
+In our data, we have $\lambda<\hat{\mu}$, QoS level $\mathbb{P}(x)=1-\frac{\lambda}{\hat{a}c+\hat{b}\lambda}e^{-(\hat{a}c+\hat{b}\lambda-\lambda)x}=1-\frac{\lambda}{0.133171c+1.000782\lambda}e^{-(0.133171c+1.000782\lambda-\lambda)x}$
+
+```{r}
+# prediction of prob of waittime <x for given cluster related information and time x
+predict_prob_waittime <- function(season, PeriodOfWeek, PeriodOfDay,x){
+  match_set <- Result %>% filter(Season == season,Period_of_Week == PeriodOfWeek,Time_of_Day == PeriodOfDay)
+  my_lambda <-match_set$Arrival_Rate
+  my_mu <-match_set$Service_Rate
+  my_c <-match_set$Avg_Servers
+  a_hat<-0.133171
+  b_hat<-1.000782
+  Pr<-1-my_lambda/(a_hat*my_c+b_hat*my_lambda)*exp(-(a_hat*my_c+b_hat*my_lambda-my_lambda)*x)
+  return(Pr)
+}
+```
+
+```{r}
+predict_prob_waittime("3 - SUMMER","1 - WEEKDAY","2 - MORNING",15)
+```
 
 ### References
 
