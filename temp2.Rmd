@@ -8,6 +8,7 @@ output: pdf_document
 ```{r}
 library(dplyr)
 library(lubridate)
+library(scales)
 ```
 
 ```{r}
@@ -278,5 +279,43 @@ predict_prob_waittime <- function(season, PeriodOfWeek, PeriodOfDay,x){
 ```
 
 ```{r}
-predict_prob_waittime("Summer","Weekday","2 - MORNING",15)
+percent(predict_prob_waittime("Summer","Weekday","2 - MORNING",15),accuracy = 0.01)
+```
+
+```{r}
+# create performance table
+Performance <- data.frame()
+state_season <- c("Summer","Autumn")
+state_week <- c("Weekday","Weekend")
+state_day <- TimeDay
+checkpoint <-c(5,10,15,20,25,30)
+
+l = 1
+for(i in state_week){
+  m = 1
+  for(j in state_season){
+    n = 1
+    for(k in state_day){
+      Row <- c()
+      perform <- c()
+      for(x in checkpoint){
+        if((l-1)*8+(m-1)*4+n ==1 | (l-1)*8+(m-1)*4+n == 9 |(l-1)*8+(m-1)*4+n ==13){
+          prob <- NaN
+          perform <- cbind(perform,prob)
+        }
+        else{
+          prob <- percent(predict_prob_waittime(j,i,k,x),accuracy = 0.01)
+          perform <- cbind(perform,prob)
+        }
+      }
+      Row <- cbind(j,i,k,nrow(List_4[[(l-1)*8+(m-1)*4+n]]),mean(as.numeric((List_4[[(l-1)*8+(m-1)*4+n]]$Wait_Time))),perform)
+      Performance <- rbind(Performance,Row)
+      n = n+1
+    }
+    m = 2
+  }
+  l = 2
+}
+View(Performance)
+colnames(Performance) <- c("Season","Period_of_week","Time_of_day","Count","Avg_wait_time","Pr(<5 mins)","Pr(<10 mins)","Pr(<15 mins)","Pr(<20 mins)","Pr(<25 mins)","Pr(<30 mins)")
 ```
