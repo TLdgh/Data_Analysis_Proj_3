@@ -230,12 +230,6 @@ data_4<-read.csv("years20262030.csv")
 ### Queuing Analysis
 
 ```{r}
-#clean BASA data:
-BASA<-BASA%>%mutate(Period_of_Week=case_when(
-    Day_of_Week=="6 - SAT" | Day_of_Week=="7 - SUN" ~ "2 - WEEKEND",
-    .default = "1 - WEEKDAY"
-))
-
 #make list of 16 clusters:
 BASA <- split(BASA, list(BASA$Season, BASA$Period_of_Week, BASA$Time_of_Day))
 
@@ -258,6 +252,77 @@ BASA_fill<-map(BASA_fill, function(df){
 
 sum(is.na(BASA_fill$S1))
 sum(is.na(BASA_fill$S2))
+```
+
+```{r}
+MakeTbl<-function(cluster){
+  if(is_empty(unique(cluster$Period_of_Week))==TRUE){
+    Result <- data.frame(Season=NaN, Period_of_Week=NaN,Time_of_Day=NaN,Arrival_Rate=NaN,Avg_Wait_Time=NaN,Service_Rate=NaN,Avg_Servers=NaN)
+  }else{
+    if(unique(cluster$Period_of_Week)=="1 - WEEKDAY"){
+      lambda <-nrow(cluster)/(13*5*6)
+    }else{
+      lambda <- nrow(cluster)/(13*2*6)
+    }  
+    
+    Wq <- mean(cluster$Wait_Time)
+    mu <- (Wq*lambda+sqrt((Wq*lambda)^2+4*Wq*lambda))/(2*Wq)
+    c <- mean(cluster$C0,na.rm = TRUE)
+    
+    Result <- data.frame(Season=unique(cluster$Season),Period_of_Week=unique(cluster$Period_of_Week),
+                         Time_of_Day=unique(cluster$Time_of_Day),Arrival_Rate=lambda,
+                         Avg_Wait_Time=Wq,Service_Rate=mu,Avg_Servers=c)
+  }
+  return(Result)
+}
+Result<-do.call(rbind, map(BASA_fill, MakeTbl))
+```
+
+Regression Model
+$\mu=\mu(\lambda,c)=ac+b\lambda$
+$\frac{\mu}{c}=b\frac{\lambda}{c}+a$
+
+```{r}
+regression_data <-Result%>%transmute(Avg_Servers, Arrival_Rate,Service_Rate,
+                                    arrival_rate_perserver=Arrival_Rate/Avg_Servers,
+                                    service_rate_perserver=Service_Rate/Avg_Servers)
+
+# Regression model
+regression_model<- lm(service_rate_perserver ~ arrival_rate_perserver,data = regression_data[-c(1,9,13),])
+summary(regression_model)
+```
+
+$service\_rate\_perserver=1.000782*arrival\_rate\_perserver+0.133171$
+$\frac{\mu}{c}=1.000782 \frac{\lambda}{c}+0.133171$
+$\mu=1.000782\lambda+0.133171c$
+implies that $\hat{a}=0.133171$ and $\hat{b}=1.000782$, where $\lambda$ is the arrival rate, $c$ is the average number of servers, $\mu$ is the service rate.
+
+```{r}
+plot(regression_data[-c(1,9,13),]$arrival_rate_perserver, regression_data[-c(1,9,13),]$service_rate_perserver, pch = 16, col = "blue", xlab = "Arrival rate per server", ylab = "Service rate per server", main = "Regression Line and Points")
+
+abline(regression_model, col = "red")
+
+legend("topleft", legend = c("Points", "Regression Line"), col = c("blue", "red"), pch = c(16, NA), lty = c(NA, 1))
+```
+
+In our data, we have $\lambda<\hat{\mu}$, QoS level $\mathbb{P}(x)=1-\frac{\lambda}{\hat{a}c+\hat{b}\lambda}e^{-(\hat{a}c+\hat{b}\lambda-\lambda)x}=1-\frac{\lambda}{0.133171c+1.000782\lambda}e^{-(0.133171c+1.000782\lambda-\lambda)x}$
+
+```{r}
+# prediction of prob of waittime <x for given cluster related information and time x
+predict_prob_waittime <- function(season, PeriodOfWeek, PeriodOfDay,x){
+  match_set <- Result %>% filter(Season == season,Period_of_Week == PeriodOfWeek,Time_of_Day == PeriodOfDay)
+  my_lambda <-match_set$Arrival_Rate
+  my_mu <-match_set$Service_Rate
+  my_c <-match_set$Avg_Servers
+  a_hat<-0.133171
+  b_hat<-1.000782
+  Pr<-1-my_lambda/(a_hat*my_c+b_hat*my_lambda)*exp(-(a_hat*my_c+b_hat*my_lambda-my_lambda)*x)
+  return(Pr)
+}
+```
+
+```{r}
+predict_prob_waittime("3 - SUMMER","1 - WEEKDAY","2 - MORNING",15)
 ```
 
 ### References
