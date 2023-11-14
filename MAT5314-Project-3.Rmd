@@ -38,28 +38,28 @@ We were given four data sets containing the details of the screening process at 
 ### Data Definition
 
 ```{r}
-AUC<-read.csv("BASA_AUC_2028_912.csv", header = TRUE)
+BASA<-read.csv("BASA_AUC_2028_912.csv", header = TRUE)
 Flight<-read.csv("dat_F_sub.csv")
 Passenger<-read.csv("dat_P_sub_c.csv")
 Y2026<-read.csv("years20262030.csv")
 ```
 
-The four data sets had common variables. The AUC data set was the biggest one containing most of the common variables, hence we used it as the main data set. We compared the variables between AUC and Passenger data and noticed that Passenger had unique variables with suffix "Flag", which we thought was not useful for our analysis. Other unique variables in Passenger were presented in other tables as well, hence these variables were omitted in our Queuing Analysis section. 
+The four data sets had common variables. The BASA data set was the biggest one containing most of the common variables, hence we used it as the main data set. We compared the variables between BASA and Passenger data and noticed that Passenger had unique variables with suffix "Flag", which we thought was not useful for our analysis. Other unique variables in Passenger were presented in other tables as well, hence these variables were omitted in our Queuing Analysis section. 
 ```{r}
-setdiff(colnames(Passenger), colnames(AUC))
+setdiff(colnames(Passenger), colnames(BASA))
 ```
 
 Similarly, the Flight data had variables that weren't really relevant or useful for our analysis, hence we also omitted them in Queuing Analysis.
 ```{r}
-setdiff(colnames(Flight), colnames(AUC))
+setdiff(colnames(Flight), colnames(BASA))
 ```
 
-AUC and Y2026 had the same variables, except that Y2026 has airfields other than Auckland.
+BASA and Y2026 had the same variables, except that Y2026 has airfields other than Auckland.
 
-We gave a proper data definition in the following Table() for AUC data and for the unique variables in Passenger and Flight data in Table () and Table(). 
+We gave a proper data definition in the following Table() for BASA data and for the unique variables in Passenger and Flight data in Table () and Table(). 
 
 ```{r}
-DataDict<-AUC%>%select(-X)
+DataDict<-BASA%>%select(-X)
 DataDict<-data.frame(
   Variables=colnames(DataDict),
   Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),1)), collapse = ", ")),
@@ -88,7 +88,7 @@ DataDict<-data.frame(
             ), row.names = NULL
 )
 
-DataDict%>%kable(booktabs = TRUE,caption = "AUC Variable Definition")%>%
+DataDict%>%kable(booktabs = TRUE,caption = "BASA Variable Definition")%>%
   kable_styling(font_size=7, latex_options=c("striped","hold_position"))%>%
   column_spec(2, width = "8em")%>%
   column_spec(5, width = "15em")%>%
@@ -96,7 +96,7 @@ DataDict%>%kable(booktabs = TRUE,caption = "AUC Variable Definition")%>%
 ```
 
 ```{r}
-DataDict<-Passenger%>%select(setdiff(colnames(Passenger), colnames(AUC)))
+DataDict<-Passenger%>%select(setdiff(colnames(Passenger), colnames(BASA)))
 DataDict<-data.frame(
   Variables=colnames(DataDict),
   Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),2)), collapse = ", ")),
@@ -120,7 +120,7 @@ DataDict%>%kable(booktabs = TRUE,caption = "Passenger Variable Definition")%>%
 ```
 
 ```{r}
-DataDict<-Flight%>%select(setdiff(colnames(Flight), colnames(AUC)))
+DataDict<-Flight%>%select(setdiff(colnames(Flight), colnames(BASA)))
 DataDict<-data.frame(
   Variables=colnames(DataDict),
   Example=sapply(DataDict, function(x) paste(as.character(head(unique(x),2)), collapse = ", ")),
@@ -151,18 +151,18 @@ DataDict%>%kable(booktabs = TRUE,caption = "Flight Variable Definition")%>%
   row_spec(0,bold=TRUE)
 ```
 
-We must also pointed out that there were flaws in these data sets that we had to correct. The AUC data contained the useful information from the Passenger data, as we have explained earlier. However there was a discrepancy of 10 minutes between the AUC Schedule Departure time and the Passenger Schedule Departure time. We believed that this difference is a minor mistake. AUC data contained the least amount of mistakes overall, hence another reason for us to use the AUC data directly in our Queuing analysis. In addition, The Period_of_Week variable did not match with the Day_of_Week, therefore we have cleaned all these flaws before doing the subsequent analyses.
+We must also pointed out that there were flaws in these data sets that we had to correct. The BASA data contained the useful information from the Passenger data, as we have explained earlier. However there was a discrepancy of 10 minutes between the BASA Schedule Departure time and the Passenger Schedule Departure time. We believed that this difference is a minor mistake. BASA data contained the least amount of mistakes overall, hence another reason for us to use the BASA data directly in our Queuing analysis. In addition, The Period_of_Week variable did not match with the Day_of_Week, therefore we have cleaned all these flaws before doing the subsequent analyses.
 
 ```{r}
-#clean AUC data:
-AUC<-AUC%>%mutate(Period_of_Week=case_when(
+#clean BASA data:
+BASA<-BASA%>%mutate(Period_of_Week=case_when(
     Day_of_Week=="6 - SAT" | Day_of_Week=="7 - SUN" ~ "2 - WEEKEND",
     .default = "1 - WEEKDAY"
 ))
 ```
 
 ```{r}
-result <- AUC %>%
+result <- BASA %>%
   group_by(Year, Season, Time_of_Day, Day_of_Week) %>%  # 按照年、季度和时间段分组
   summarise(
    Meantime= mean(Wait_Time),# 计算均值或其他汇总统计量
@@ -228,6 +228,37 @@ data_4<-read.csv("years20262030.csv")
 ### Data exploration
 
 ### Queuing Analysis
+
+```{r}
+#clean BASA data:
+BASA<-BASA%>%mutate(Period_of_Week=case_when(
+    Day_of_Week=="6 - SAT" | Day_of_Week=="7 - SUN" ~ "2 - WEEKEND",
+    .default = "1 - WEEKDAY"
+))
+
+#make list of 16 clusters:
+BASA <- split(BASA, list(BASA$Season, BASA$Period_of_Week, BASA$Time_of_Day))
+
+# fill missing wait time with mean
+fill_missing <- function(df){
+  mean_value <- round(mean(df$Wait_Time, na.rm = TRUE),0)
+  df$Wait_Time[is.na(df$Wait_Time)] <- mean_value
+  return(df)
+}
+
+BASA_fill<-map(BASA, fill_missing)
+```
+
+```{r}
+# Ccalculate S1 = S2-Wait_Time
+BASA_fill<-map(BASA_fill, function(df){
+  df$S2<-as.POSIXct(df$S2, format = "%Y-%m-%d %H:%M:%S")
+  df$S1<-df$S2 - as.numeric(df$Wait_Time) * 60 
+  return(df)})
+
+sum(is.na(BASA_fill$S1))
+sum(is.na(BASA_fill$S2))
+```
 
 ### References
 
