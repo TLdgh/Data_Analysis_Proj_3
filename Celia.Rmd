@@ -1,4 +1,5 @@
 ```{r}
+library(plotly)
 read.csv("BASA_AUC_2028_912.csv")
 read.csv("dat_F_sub.csv")
 read.csv("dat_P_sub_c.csv")
@@ -6,7 +7,7 @@ read.csv("years20262030.csv")
 ```
 
 ```{r}
-#合并三张表格中相同的列
+#合并三张表格中相同的列并按照S2对数据进行重新排序
 file_names <- c("BASA_AUC_2028_912.csv", "dat_P_sub_c.csv", "years20262030.csv")
 data_frames <- list()
 
@@ -23,16 +24,54 @@ for (file_name in file_names) {
   merged_data <- merge(merged_data, common_data, all = TRUE)
 }
 
-print(merged_data)
-```
-
-```{r}
-#按照S2的时间给表格重新排序
 merged_data$S2 <- as.POSIXct(merged_data$S2, format = "%Y/%m/%d %H:%M")
 merged_data$Sch_Departure <- as.POSIXct(merged_data$Sch_Departure, format="%Y/%m/%d %H:%M")
 
 data2 <- merged_data[order(merged_data$S2), ]
-head(data2)
+```
+
+```{r}
+#参考Yang的代码，用均值补充Wait_Time列的missing data
+data2_WEEKDAY <- data2 %>% filter(Period_of_Week == "1 - WEEKDAY")
+
+data2_WEEKEND <- data2 %>% filter(Period_of_Week == "2 - WEEKEND")
+
+data2_WEEKDAY_WINTER <- data2_WEEKDAY %>% filter(Season == "1 - WINTER")
+data2_WEEKDAY_SUMMER <- data2_WEEKDAY %>% filter(Season == "3 - SUMMER")
+data2_WEEKDAY_AUTUMN <- data2_WEEKDAY %>% filter(Season == "4 - AUTUMN")
+data2_WEEKEND_WINTER <- data2_WEEKEND %>% filter(Season == "1 - WINTER")
+data2_WEEKEND_SUMMER <- data2_WEEKEND %>% filter(Season == "3 - SUMMER")
+data2_WEEKEND_AUTUMN <- data2_WEEKEND %>% filter(Season == "4 - AUTUMN")
+
+# fill missing wait time with mean
+fill_missing <- function(data2){
+  mean_value <- round(mean(data2$Wait_Time, na.rm = TRUE),0)
+  data2$Wait_Time[is.na(data2$Wait_Time)] <- mean_value
+  return(data2)
+}
+
+List_1 <- list(data2_WEEKDAY_WINTER,data2_WEEKDAY_SUMMER,data2_WEEKDAY_AUTUMN,data2_WEEKEND_WINTER,data2_WEEKEND_SUMMER,data2_WEEKEND_AUTUMN)
+
+# create cluster by Time of Day
+# List3 stores 16 subset for S2
+TimeDay <- c("1 - NIGHT","2 - MORNING","3 - AFTERNOON","4 - EVENING")
+data2_fill <- data.frame()
+List_3 <- list()
+
+
+for(i in c(1,2,3,4,5,6)){
+  k=1
+  for(j in TimeDay){
+    filter_data2 <- List_1[[i]] %>% filter(Time_of_Day == j)
+    filter_fill <- fill_missing(filter_data2)
+    List_3[[(i-1)*4+k]] <- filter_fill
+    data2_fill <- rbind(data2_fill,filter_fill)
+    k=k+1
+  }
+}
+
+data2 <- data2_fill
+data2
 ```
 
 ```{r}
@@ -67,7 +106,7 @@ for (i in 1:length(air_data)) {
 p <- layout(
   p,
   title = "Histogram of Time Differences by Airfield",
-  xaxis = list(title = "Time Difference", range = c(-5, 10)),
+  xaxis = list(title = "Time Difference(Hour)", range = c(-2, 8)),
   yaxis = list(title = "Frequency"),
   barmode = "overlay"
 )
@@ -76,7 +115,7 @@ p
 ```
 
 ```{r}
-#根据Time_of_Day分类
+#根据Time_of_Day(Morning;Afternoon;Evening;Night)分类
 time_of_day_categories <- unique(data2$Time_of_Day)
 
 p0 <- plot_ly()
@@ -102,7 +141,7 @@ for (time_of_day in time_of_day_categories) {
 p0 <- layout(
   p0,
   title = "Wait Time by Time_of_Day",
-  xaxis = list(title = "Wait Time(Minute)"),
+  xaxis = list(title = "Wait Time(Minute)", range = c(0, 25)),
   yaxis = list(title = "Frequency"),
   showlegend = TRUE
 )
@@ -111,7 +150,7 @@ p0
 ```
 
 ```{r}
-# 每个Time_of_Day的平均 Wait_Time
+# 每个Time_of_Day的平均Wait_Time
 avg_time_day <- tapply(data2$Wait_Time, data2$Time_of_Day, mean)
 
 avg_time_day_df <- data.frame(Time_of_Day = names(avg_time_day),
@@ -155,7 +194,7 @@ for (period_of_week in period_of_week_categories) {
 p1 <- layout(
   p1,
   title = "Wait Time by Period_of_Week",
-  xaxis = list(title = "Wait Time(Minute)"),
+  xaxis = list(title = "Wait Time(Minute)", range = c(0, 30)),
   yaxis = list(title = "Frequency"),
   showlegend = TRUE
 )
@@ -164,7 +203,7 @@ p1
 ```
 
 ```{r}
-# 每个 Period_of_Week 的平均 Wait_Time
+# 每个Period_of_Week的平均 Wait_Time
 avg_time_week <- tapply(data2$Wait_Time, data2$Period_of_Week, mean)
 
 avg_time_week_df <- data.frame(Period_of_Week = names(avg_time_week),
@@ -218,7 +257,7 @@ for (day_of_week in day_of_week_categories) {
 p2 <- layout(
   p2,
   title = "Wait Time by Day_of_Week",
-  xaxis = list(title = "Wait Time(Minute)", range = c(0, 20)),
+  xaxis = list(title = "Wait Time(Minute)", range = c(0, 30)),
   yaxis = list(title = "Frequency"),
   showlegend = TRUE
 )
@@ -247,26 +286,118 @@ plot_ly(x = avg_time_df$Day_of_Week,
 ```
 
 ```{r}
-#一天内不同时间段通过S2人数的表格
-hour <- as.numeric(format(as.POSIXct(data2$S2, format="%Y-%m-%d %H:%M:%S"), "%H"))
-count_hour <- table(factor(cut(hour, breaks = c(0, 3, 7, 11, 15, 19, 23), labels = FALSE, include.lowest = TRUE),levels = 1:6))
-p <- plot_ly(x = c("0-3", "4-7", "8-11", "12-15", "16-19", "20-23"),
-        y = count_hour,
-        type = "bar",
-        name = "Count",
-        marker = list(color = "skyblue", line = list(color = "black"))) %>%
-  layout(title = "Distribution of Data Across Time Slots",
-         xaxis = list(title = "Time Slot"),
-         yaxis = list(title = "Count"))
-plot_ly(x = c("0-3", "4-7", "8-11", "12-15", "16-19", "20-23"),
-             y = count_hour,
-             type = "bar",
-             name = "Count",
-             marker = list(color = "skyblue", line = list(color = "black")),
-             text = count_hour,
-             textposition = "outside",
-             textfont = list(size = 14)) %>%
-  layout(title = "Number of Passengers Scaned at S2 at Different Period of the Day",
-         xaxis = list(title = "Different Period of the Day"),
-         yaxis = list(title = "Number of Passengers"))
+#根据Season分类
+season_categories <- unique(data2$Season)
+
+p3 <- plot_ly()
+for (season in season_categories) {
+  subset_data <- data2[data2$Season == season, ]
+  
+  color <- switch(
+    season,
+    "1 - WINTER" = "lightblue",
+    "2 - SPRING" = "orange",
+    "3 - SUMMER" = "green",
+    "4 - AUTUMN" = "red",
+  )
+
+  p3 <- add_trace(
+    p3,
+    type = "histogram",
+    x = subset_data$Wait_Time,
+    name = season,
+    marker = list(color = color, line = list(color = "black")),
+    xbins = list(size = 2)
+  )
+}
+
+p3 <- layout(
+  p3,
+  title = "Wait Time by Season",
+  xaxis = list(title = "Wait Time(Minute)", range = c(0, 23)),
+  yaxis = list(title = "Frequency"),
+  showlegend = TRUE
+)
+
+p3
 ```
+
+```{r}
+# 每个Season的平均Wait_Time
+avg_time_season <- tapply(data2$Wait_Time, data2$Season, mean)
+
+avg_time_season_df <- data.frame(Season = names(avg_time_season),
+                               Average_Wait_Time = avg_time_season)
+
+plot_ly(
+  x = avg_time_season_df$Season,
+  y = avg_time_season_df$Average_Wait_Time,
+  type = "bar",
+  name = "Average Wait Time",
+  marker = list(color = "lightblue", line = list(color = "black")),
+              text = avg_time_season_df$Average_Wait_Time,
+              textposition = "outside",
+              textfont = list(size = 14)) %>%
+  layout(
+    title = "Average Wait Time by Season",
+    xaxis = list(title = "Season"),
+    yaxis = list(title = "Average Wait Time")
+  )
+```
+
+```{r}
+#不同Time_of_Day的C0(S2的servers)数量
+p4 <- plot_ly()
+for (time_of_day in time_of_day_categories) {
+  subset_data <- data2[data2$Time_of_Day == time_of_day, ]
+  color <- switch(
+    time_of_day,
+    "2 - MORNING" = "lightblue",
+    "3 - AFTERNOON" = "orange",
+    "4 - EVENING" = "green",
+    "1 - NIGHT" = "purple"
+  )
+  p4 <- add_trace(
+    p4,
+    type = "histogram",
+    x = subset_data$C0,
+    name = time_of_day,
+    marker = list(color = color, line = list(color = "black")),
+    xbins = list(size = 2)
+  )
+}
+
+p4 <- layout(
+  p4,
+  title = "The Number of Security Agents at S2 by Time_of_Day",
+  xaxis = list(title = "The Number of Security Agents"),
+  yaxis = list(title = "Frequency"),
+  showlegend = TRUE
+)
+
+p4
+```
+
+```{r}
+# 每个Time_of_Day的平均C0 (The Number of Security Agents at S2)
+avg_time_day <- tapply(data2$C0, data2$Time_of_Day, mean)
+
+avg_time_day_df <- data.frame(Time_of_Day = names(avg_time_day),
+                               Average_C0 = avg_time_day)
+
+plot_ly(
+  x = avg_time_day_df$Time_of_Day,
+  y = avg_time_day_df$Average_C0,
+  type = "bar",
+  name = "Average Number of Security Agents at S2(C0)",
+  marker = list(color = "lightblue", line = list(color = "black")),
+              text = avg_time_day_df$Average_C0,
+              textposition = "outside",
+              textfont = list(size = 14)) %>%
+  layout(
+    title = "Average Number of Security Agents at S2(C0) by Time_of_Day",
+    xaxis = list(title = "Time_of_Day"),
+    yaxis = list(title = "Average Number of Security Agents at S2(C0)")
+  )
+```
+
