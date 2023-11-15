@@ -227,7 +227,6 @@ regression_data <-Result%>%transmute(Avg_Servers, Arrival_Rate,Service_Rate,
 
 # Regression model
 regression_model<- lm(service_rate_perserver ~ arrival_rate_perserver,data = regression_data[-c(1,9,13),])
-summary(regression_model)
 ```
 
 ```{r}
@@ -237,8 +236,7 @@ regression_data%>%
   row_spec(0,bold=TRUE)
 ```
 
-From Table(), we noticed that there may be a positive correlation between the service rate per server and the arrival rate per server. We assumed a linear relationship between them, say $\frac{\mu}{c}=b\frac{\lambda}{c}+a$, that is, $\mu=\mu(\lambda,c)=ac+b\lambda$
-. Furthermore, we performed a linear regression on these two variables. Base on the result from above regression, we have $service\_rate\_perserver=1.43244*arrival\_rate\_perserver+0.03544$, i.e. $\frac{\mu}{c}=1.43244 \frac{\lambda}{c}+0.03544$. We got $\mu=1.43244\lambda+0.03544c$ which implied that $\hat{a}=0.03544$ and $\hat{b}=1.43244$, where $\lambda$ was the arrival rate, $c$ was the average number of servers, and $\mu$ was the service rate. The Figure() below reflected this linear positive relationship and the clusters' observations $(\frac{\lambda}{c},\frac{\hat{\mu}}{c})$ closely lied on the regression line. .  
+From Table(), we noticed that there may be a positive correlation between the service rate per server and the arrival rate per server. We assumed a linear relationship between them, say $\frac{\mu}{c}=a+b\cdot \frac{\lambda}{c}$, that is, $\mu=\mu(\lambda,c)=ac+b\lambda$, where $\lambda$ was the arrival rate, $c$ was the average number of servers, and $\mu$ was the service rate. We performed a linear regression on these two variables and got $\hat{a}=$ `r regression_model$coefficients[1]` and $\hat{b}=$ `r regression_model$coefficients[2]`. The Figure() below reflected this linear positive relationship and the clusters' observations $(\frac{\lambda}{c},\frac{\hat{\mu}}{c})$ closely lied on the regression line. .  
 
 ```{r}
 plot(regression_data[-c(3,4),]$arrival_rate_perserver, regression_data[-c(3,4),]$service_rate_perserver, pch = 16, col = "blue", xlab = "Arrival rate per server", ylab = "Service rate per server", main = "Regression Line and Points")
