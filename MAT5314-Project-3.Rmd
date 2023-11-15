@@ -163,69 +163,6 @@ BASA<-BASA%>%mutate(Period_of_Week=case_when(
 #BASA[which(BASA$Time_of_Day=="1 - NIGHT"),"Time_of_Day"]<-"4 - EVENING"
 ```
 
-```{r}
-result <- BASA %>%
-  group_by(Year, Season, Time_of_Day, Day_of_Week) %>%  # 按照年、季度和时间段分组
-  summarise(
-   Meantime= mean(Wait_Time),# 计算均值或其他汇总统计量
-   Meanservers=mean(C0),
-   pro_ser1=sum(C0== 1)/n(),
-   pro_ser2=sum(C0== 2)/n(),
-   pro_ser3=sum(C0== 3)/n(),
-   ave_ser=pro_ser1*1+pro_ser2*2+pro_ser2*3,
-   TotalCount = n(),# 统计每个组的数据数量
-    .groups = "drop"
-  )
-```
-
-```{r, eval=FALSE}
-# 定义参数
-lambda <- 5  # 平均到达率 (arrivals per time unit)
-mu <- 6      # 平均服务率 (services per time unit)
-
-# 模拟时间
-sim_time <- 1000
-
-# 初始化变量
-queue <- numeric(0)  # 队列
-clock <- 0           # 时钟
-arrivals <- 0        # 到达数
-departures <- 0      # 服务完成数
-
-# 模拟循环
-while (clock < sim_time) {
-  # 计算下一个到达和服务时间
-  inter_arrival_time <- rexp(1, lambda)
-  arrival_time <- clock + inter_arrival_time
-  
-  service_time <- rexp(1, mu)
-  departure_time <- clock + service_time
-  
-  # 处理到达事件
-  if (arrival_time < departure_time || departures == 0) {
-    arrivals <- arrivals + 1
-    queue <- c(queue, arrival_time)
-    clock <- arrival_time
-  } else {  # 处理服务完成事件
-    departures <- departures + 1
-    queue <- queue[-1]
-    clock <- departure_time
-  }
-}
-
-# 计算模拟结果
-average_waiting_time <- sum(departure_time - queue) / departures
-
-# 打印结果
-cat("Average Waiting Time:", average_waiting_time, "\n")
-cat("Total Arrivals:", arrivals, "\n")
-cat("Total Departures:", departures, "\n")
-```
-
-```{r}
-data_4<-read.csv("years20262030.csv")
-```
-
 
 ### Data exploration
 
@@ -250,24 +187,19 @@ fill_missing <- function(df){
 BASA_fill<-map(BASA_fill, fill_missing)
 ```
 
-```{r}
-# Ccalculate S1 = S2-Wait_Time
-BASA_fill<-map(BASA_fill, function(df){
-  df$S2<-as.POSIXct(df$S2, format = "%Y-%m-%d %H:%M:%S")
-  df$S1<-df$S2 - as.numeric(df$Wait_Time) * 60 
-  return(df)})
-```
 
 ```{r}
 MakeTbl<-function(cluster){
   if(is_empty(unique(cluster$Period_of_Week))==TRUE){
     Result <- data.frame(Season=NaN, Period_of_Week=NaN,Time_of_Day=NaN,Count=NaN,Minute=NaN,Arrival_Rate=NaN,Avg_Wait_Time=NaN,Service_Rate=NaN,Avg_Servers=NaN)
   }else{
-    Minute<-difftime(max(cluster$S2),min(cluster$S2), units = "mins")%>%as.numeric()
-    lambda <-nrow(cluster)/Minute
-    Count<-nrow(cluster)
-    Wq <- mean(cluster$Wait_Time)
-    mu <- (Wq*lambda+sqrt((Wq*lambda)^2+4*Wq*lambda))/(2*Wq)
+    if(unique(cluster$Period_of_Week)=="1 - WEEKDAY"){Minute<-13*5*6*60}else{Minute<-13*2*6*60}
+    #Minute<-difftime(max(cluster$S2),min(cluster$S2), units = "mins")%>%as.numeric()
+    
+    Count<-nrow(cluster) #number of arrivals
+    lambda <-Count/Minute #lambda is the arrival rate (number of arrivals per unit time)
+    Wq <- mean(cluster$Wait_Time) #Wq is the average wait time
+    mu <- (Wq*lambda+sqrt((Wq*lambda)^2+4*Wq*lambda))/(2*Wq) #mu is the service rate per unit time
     c <- mean(cluster$C0,na.rm = TRUE)
     
     Result <- data.frame(Season=unique(cluster$Season),Period_of_Week=unique(cluster$Period_of_Week),
@@ -307,20 +239,20 @@ regression_data%>%
   row_spec(0,bold=TRUE)
 ```
 
-$service\_rate\_perserver=1.000782*arrival\_rate\_perserver+0.133171$
-$\frac{\mu}{c}=1.000782 \frac{\lambda}{c}+0.133171$
-$\mu=1.000782\lambda+0.133171c$
-implies that $\hat{a}=0.133171$ and $\hat{b}=1.000782$, where $\lambda$ is the arrival rate, $c$ is the average number of servers, $\mu$ is the service rate.
+$service\_rate\_perserver=1.43244*arrival\_rate\_perserver+0.03544 $
+$\frac{\mu}{c}=1.43244 \frac{\lambda}{c}+0.03544$
+$\mu=1.43244\lambda+0.03544c$
+implies that $\hat{a}=0.03544$ and $\hat{b}=1.43244$, where $\lambda$ is the arrival rate, $c$ is the average number of servers, $\mu$ is the service rate.
 
 ```{r}
-plot(regression_data[-c(1,9,13),]$arrival_rate_perserver, regression_data[-c(1,9,13),]$service_rate_perserver, pch = 16, col = "blue", xlab = "Arrival rate per server", ylab = "Service rate per server", main = "Regression Line and Points")
+plot(regression_data[-c(3,4),]$arrival_rate_perserver, regression_data[-c(3,4),]$service_rate_perserver, pch = 16, col = "blue", xlab = "Arrival rate per server", ylab = "Service rate per server", main = "Regression Line and Points")
 
 abline(regression_model, col = "red")
 
 legend("topleft", legend = c("Points", "Regression Line"), col = c("blue", "red"), pch = c(16, NA), lty = c(NA, 1))
 ```
 
-In our data, we have $\lambda<\hat{\mu}$, QoS level $\mathbb{P}(x)=1-\frac{\lambda}{\hat{a}c+\hat{b}\lambda}e^{-(\hat{a}c+\hat{b}\lambda-\lambda)x}=1-\frac{\lambda}{0.133171c+1.000782\lambda}e^{-(0.133171c+1.000782\lambda-\lambda)x}$
+In our data, we have $\lambda<\hat{\mu}$, QoS level $\mathbb{P}(x)=1-\frac{\lambda}{\hat{a}c+\hat{b}\lambda}e^{-(\hat{a}c+\hat{b}\lambda-\lambda)x}=1-\frac{\lambda}{0.03544c+1.43244\lambda}e^{-(0.03544c+1.43244\lambda-\lambda)x}$
 
 ```{r}
 # prediction of prob of waittime <x for given cluster related information and time x
@@ -329,8 +261,8 @@ predict_prob_waittime <- function(season, PeriodOfWeek, PeriodOfDay,x){
   my_lambda <-match_set$Arrival_Rate
   my_mu <-match_set$Service_Rate
   my_c <-match_set$Avg_Servers
-  a_hat<-0.133171
-  b_hat<-1.000782
+  a_hat<-0.03544
+  b_hat<-1.43244
   Pr<-1-my_lambda/(a_hat*my_c+b_hat*my_lambda)*exp(-(a_hat*my_c+b_hat*my_lambda-my_lambda)*x)
   return(round(Pr,5))
 }
@@ -355,7 +287,7 @@ dimnames(P)<-list(rownames(Result), paste0("Pr(<", checkpoint, " mins)") )
 P%>%kable(booktabs = TRUE,caption = "Performance Level")%>%
   kable_styling(font_size=7, latex_options=c("striped","scale_down","hold_position"))%>%
   row_spec(0,bold=TRUE)%>%
-  column_spec(0,bold=TRUE)
+  column_spec(1,bold=TRUE)
 ```
 
 ```{r}

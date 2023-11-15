@@ -15,7 +15,8 @@ Data_Analysis_Proj_3.Rproj
 *.html
 *.log
 *.pdf
-*.tex
 Figures/*_files/
 !Citation/*
 MAT5314-Project-3.tex
+References.bib
+DataDictionary.Rmd
