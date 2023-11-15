@@ -229,6 +229,11 @@ data_4<-read.csv("years20262030.csv")
 
 ### Data exploration
 
+In the data Y2026, there were only two kinds of seasons: winter and autumn. Autumn contained only 7 data points and winter had 3219 points, which in total accounted for the bulk of the data. One can see from the Airfield column that although it contained the most types of airfields among the four data sets, except for SaintFrancois(SAF), the other three airfields had negligible proportions. The airfields in the data set BASA were all Auckland (AUC), whereas in Y2026 there were only four data points for which the airfield was AUC. Compared with BASA, Y2026 provided too little information. If we analyze the data of Y2026 based on the combination of categories of Time_of_ Day, Day_of_Week and Season respectively, the count of arrivals of Y2026 in most of clusters was almost zero, that is to say, the data of Y2026 was not very useful to the overall analysis, so we discard this data set.
+```{r, results='asis'}
+ftable(Y2026[, c("Airfield", "Season", "Time_of_Day", "Day_of_Week")])
+```
+
 ### Queuing Analysis
 
 ```{r}
