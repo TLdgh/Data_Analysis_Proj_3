@@ -327,12 +327,43 @@ predict_prob_waittime <- function(season, PeriodOfWeek, PeriodOfDay,x){
   a_hat<-0.133171
   b_hat<-1.000782
   Pr<-1-my_lambda/(a_hat*my_c+b_hat*my_lambda)*exp(-(a_hat*my_c+b_hat*my_lambda-my_lambda)*x)
-  return(Pr)
+  return(round(Pr,5))
 }
+
+PlotCDF<-function(df, Time){
+  df<-cbind(Time, df)%>%gather("Cluster", "Value",2:(length(df)-1))
+  p<-ggplot(df, aes(x = Time, y = Value, color = Cluster)) +
+      geom_line() +
+      labs(title = paste("CDF of Cluster"), x = "Time in mins", y = "CDF")
+  print(p)
+  }
 ```
 
 ```{r}
-predict_prob_waittime("3 - SUMMER","1 - WEEKDAY","2 - MORNING",15)
+checkpoint <-seq(5,30,5)
+
+P<-apply(Result, 1, function(x){
+  res<-sapply(checkpoint, function(val){predict_prob_waittime(season=x[1],PeriodOfWeek=x[2],PeriodOfDay=x[3],x=val)})
+  return(res)
+})%>%t()
+dimnames(P)<-list(rownames(Result), paste0("Pr(<", checkpoint, " mins)") )
+P%>%kable(booktabs = TRUE,caption = "Performance Level")%>%
+  kable_styling(font_size=7, latex_options=c("striped","scale_down","hold_position"))%>%
+  row_spec(0,bold=TRUE)%>%
+  column_spec(0,bold=TRUE)
+```
+
+```{r}
+checkpoint <-0.0000001*exp(seq(0.1,19.5,0.1))
+
+P<-apply(Result, 1, function(x){
+  res<-sapply(checkpoint, function(val){predict_prob_waittime(season=x[1],PeriodOfWeek=x[2],PeriodOfDay=x[3],x=val)})
+  return(res)
+})
+dimnames(P)<-list(paste0("Pr(<", checkpoint, " mins)"), rownames(Result) )
+P<-as.data.frame(P)
+
+PlotCDF(P, Time = checkpoint)
 ```
 
 ### References
