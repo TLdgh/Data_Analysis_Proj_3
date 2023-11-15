@@ -302,10 +302,10 @@ regression_data%>%
   row_spec(0,bold=TRUE)
 ```
 
-$service\_rate\_perserver=1.000782*arrival\_rate\_perserver+0.133171$
-$\frac{\mu}{c}=1.000782 \frac{\lambda}{c}+0.133171$
-$\mu=1.000782\lambda+0.133171c$
-implies that $\hat{a}=0.133171$ and $\hat{b}=1.000782$, where $\lambda$ is the arrival rate, $c$ is the average number of servers, $\mu$ is the service rate.
+$service\_rate\_perserver=1.43244*arrival\_rate\_perserver+0.03544 $
+$\frac{\mu}{c}=1.43244 \frac{\lambda}{c}+0.03544$
+$\mu=1.43244\lambda+0.03544c$
+implies that $\hat{a}=0.03544$ and $\hat{b}=1.43244$, where $\lambda$ is the arrival rate, $c$ is the average number of servers, $\mu$ is the service rate.
 
 ```{r}
 plot(regression_data[-c(1,9,13),]$arrival_rate_perserver, regression_data[-c(1,9,13),]$service_rate_perserver, pch = 16, col = "blue", xlab = "Arrival rate per server", ylab = "Service rate per server", main = "Regression Line and Points")
@@ -315,7 +315,7 @@ abline(regression_model, col = "red")
 legend("topleft", legend = c("Points", "Regression Line"), col = c("blue", "red"), pch = c(16, NA), lty = c(NA, 1))
 ```
 
-In our data, we have $\lambda<\hat{\mu}$, QoS level $\mathbb{P}(x)=1-\frac{\lambda}{\hat{a}c+\hat{b}\lambda}e^{-(\hat{a}c+\hat{b}\lambda-\lambda)x}=1-\frac{\lambda}{0.133171c+1.000782\lambda}e^{-(0.133171c+1.000782\lambda-\lambda)x}$
+In our data, we have $\lambda<\hat{\mu}$, QoS level $\mathbb{P}(x)=1-\frac{\lambda}{\hat{a}c+\hat{b}\lambda}e^{-(\hat{a}c+\hat{b}\lambda-\lambda)x}=1-\frac{\lambda}{0.03544c+1.43244\lambda}e^{-(0.03544c+1.43244\lambda-\lambda)x}$
 
 ```{r}
 # prediction of prob of waittime <x for given cluster related information and time x
@@ -324,8 +324,8 @@ predict_prob_waittime <- function(season, PeriodOfWeek, PeriodOfDay,x){
   my_lambda <-match_set$Arrival_Rate
   my_mu <-match_set$Service_Rate
   my_c <-match_set$Avg_Servers
-  a_hat<-0.133171
-  b_hat<-1.000782
+  a_hat<-0.03544
+  b_hat<-1.43244
   Pr<-1-my_lambda/(a_hat*my_c+b_hat*my_lambda)*exp(-(a_hat*my_c+b_hat*my_lambda-my_lambda)*x)
   return(round(Pr,5))
 }
@@ -350,7 +350,7 @@ dimnames(P)<-list(rownames(Result), paste0("Pr(<", checkpoint, " mins)") )
 P%>%kable(booktabs = TRUE,caption = "Performance Level")%>%
   kable_styling(font_size=7, latex_options=c("striped","scale_down","hold_position"))%>%
   row_spec(0,bold=TRUE)%>%
-  column_spec(0,bold=TRUE)
+  column_spec(1,bold=TRUE)
 ```
 
 ```{r}
