@@ -251,7 +251,7 @@ abline(regression_model, col = "red")
 legend("topleft", legend = c("Points", "Regression Line"), col = c("blue", "red"), pch = c(16, NA), lty = c(NA, 1))
 ```
 
-The graph above shows clusters' observations $(\frac{\lambda}{c},\frac{\hat{\mu}}{c})$ lie on the regression line. The reason is that the number of open servers increases as $\lambda$ increases. This means when more arrivals occur, in order to control the number in queue, the airport will add new open servers reasonably to maintain balance.  
+The graph above shows clusters' observations $(\frac{\lambda}{c},\frac{\hat{\mu}}{c})$ closely lie on the regression line. The reason is that the number of open servers increases as $\lambda$ increases by airport’s proactive adjustments. This means when more arrivals occur, in order to control the number in queue, the airport will add new open servers reasonably to maintain balance.  
 
 Consider $M/M/1$ system, the probability of new arrival's wait time in queue is $x$ given that there are $n$ passengers before this new arrival in the system is $Gamma(n,\mu)$. Because we can make assumption that all services time are independent for each passenger and each one is exponential distribution with parameter $\mu$. Therefore a sum of $n$ independent exponentials is going to be a gamma distribution with parameters $n$ and $\mu$. Then we have $\mathbb{P}(x)=\sum_{n=1}^{\infty}\int_{0}^{x}\frac{\mu^{n}t^{n-1}e^{-\mu t}}{(n-1)!}dt(1-\rho)\rho^{n}=1-\rho e^{-u(1-\rho)x}$ where $\rho=\frac{\lambda}{\mu}$.
 We can conclude that QoS level $\mathbb{P}(x)=1-\rho e^{-\mu(1-\rho)x}$. We are considering $M/M/c$ as $M/M/1$ with a generalized server, thus we have $\mu=\hat{a}c+\hat{b}\lambda$ by regression result.
@@ -296,7 +296,7 @@ P%>%kable(booktabs = TRUE,caption = "Performance Level")%>%
 ```
 
 
-Table 6 told us the probability of waiting time spent in queue is less than 5 minutes up to 30 minutes, increases by 5 minutes, for each cluster respectively. The graph reflects the congestion level of queues at the airport at different times. The faster the curve approaches 1, the shorter the queue time that passengers can expect.
+Table 6 told us the probability of waiting time spent in queue is less than 5 minutes up to 30 minutes, increases by 5 minutes, for each cluster respectively. The graph reflects the congestion level of queues at the airport at different times. The faster the curve approaches 1, the shorter the queue time that passengers can expect. For example, we can see from the picture that the airport is busier in the evenings on summer weekdays, and passengers are expected to spend more time waiting in queues. The airport management can also try to add new servers during this time period to alleviate the pressure on traffic. In addition, we notice that the upper part of the graph contains several curves that quickly approach 0. The starting points $(0, \mathbb{P(0)})$ of these curves are close to 1, which indicates that during these times, there are very few or no people in the queue, and passengers can directly pass through the queue and enter the server. This situation mostly occurs at night, possibly due to the low number of passenger arrivals caused by the low number of scheduled flights at the airport during this period, and at the same time, almost all servers at the airport are closed.
 
 ```{r}
 checkpoint <-0.0000001*exp(seq(0.1,19.5,0.1))
