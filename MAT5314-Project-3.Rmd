@@ -191,6 +191,7 @@ However we found that there were still data points whose wait time were missing 
 In addition, we found that there was also a missing data in column C0. Since there were only two points of data with missing values, we decided to omit these two rows directly.
 
 ```{r, echo=FALSE}
+BASA<-do.call(rbind, BASA_fill)
 BASA <- BASA %>% filter(!is.na(Wait_Time))
 BASA <- BASA %>% filter(!is.na(C0))
 ```
