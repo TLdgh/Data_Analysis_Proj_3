@@ -231,6 +231,9 @@ data_4<-read.csv("years20262030.csv")
 
 ### Queuing Analysis
 
+Airport queuing analysis can effectively improve passenger satisfaction and alleviate airport congestion. Imagine being a traveler at the airport and going through the boarding pass process. The process from entering the queue through S1 (recording the time of entering the queue) and leaving from S2 (recording the time of leaving the queue) to c open servers can be understood as a $M/M/c$ queue system. If we classify the data according to certain conditions, then for each cluster, we can convert the MMC problem into MM1 for analysis. The generalized server of each cluster has a special arrival rate and service rate.  
+Through observation, time periods are related to airport passenger flow. There are significant differences in airport traffic between season, weekend or not, and time of day conditions. For example, there are very few passengers from midnight to early morning due to unscheduled flights. By observing that the numbers of arrivals in the early morning are 0 in most cases, we decided to group the BASA data into 16 clusters according to Season, Period_of_week and Time_of_day. This can prevent the cluster from having too many missing values in the early morning period that causes failure to calculate the arrival rate $\lambda$ and service rate $\mu$. Note that each cluster has different $\lambda$ and $\mu$ between groups. The missing S1 variable in the BASA data is necessary for the calculation of $\lambda$. There are 14.79% missing values in the Wait_Time variable from Table 1. By padding with the within-cluster mean we can obtain $\lambda=\frac{count}{period\ of\ time}$ and furthermore $\mu=\frac{\bar{W_{q}}\lambda+\sqrt{(\bar{W_{q}\lambda})^2+4\bar{W_{q}\lambda}}}{2\bar{W_{q}}}$ where $\bar{W_{q}}$ is the average of wait time.  
+
 ```{r}
 #make list of 16 clusters:
 BASA_fill <- split(BASA, list(BASA$Season, BASA$Period_of_Week, BASA$Time_of_Day))
@@ -281,9 +284,9 @@ Result%>%select(-c(Season, Period_of_Week,Time_of_Day))%>%
   row_spec(0,bold=TRUE)
 ```
 
-Regression Model
-$\mu=\mu(\lambda,c)=ac+b\lambda$
-$\frac{\mu}{c}=b\frac{\lambda}{c}+a$
+Table 4 shows the arrival rate, service rate, average waiting time and average server of each group. Since there are no passengers on summer weekend nights and the average waiting time on autumn weekend nights is missing, the relevant parameters of these two clusters cannot be known. It is clearly observed that longer waiting time is expected during the day compared to the night. It can be seen from the arrival rate that the airport welcomes more passengers during the day than the night. Service rates also reflect the airport's increase in open servers to cope with high traffic. This is reasonably consistent with reality.  
+
+Review that we are considering a multi-servers queue system $M/M/c$ as $M/M/1$ with a generalized server. 
 
 ```{r}
 regression_data <-Result%>%transmute(Avg_Servers, Arrival_Rate,Service_Rate,
@@ -302,10 +305,11 @@ regression_data%>%
   row_spec(0,bold=TRUE)
 ```
 
-$service\_rate\_perserver=1.43244*arrival\_rate\_perserver+0.03544 $
-$\frac{\mu}{c}=1.43244 \frac{\lambda}{c}+0.03544$
+From Table 5, we noticed that there may be a positive correlation between the service rate per server and the arrival rate per server. We can guess a linear relationship between them, say $\frac{\mu}{c}=b\frac{\lambda}{c}+a$, that is, $\mu=\mu(\lambda,c)=ac+b\lambda$
+. Furthermore, we perform a linear regression on these two variables. Base on the result from above regression, we have $service\_rate\_perserver=1.43244*arrival\_rate\_perserver+0.03544$,
+$i.e.$ $\frac{\mu}{c}=1.43244 \frac{\lambda}{c}+0.03544$. So we get
 $\mu=1.43244\lambda+0.03544c$
-implies that $\hat{a}=0.03544$ and $\hat{b}=1.43244$, where $\lambda$ is the arrival rate, $c$ is the average number of servers, $\mu$ is the service rate.
+implies that $\hat{a}=0.03544$ and $\hat{b}=1.43244$, where $\lambda$ is the arrival rate, $c$ is the average number of servers, $\mu$ is the service rate. The graph below visually reflects this linear positive correlation.  
 
 ```{r}
 plot(regression_data[-c(1,9,13),]$arrival_rate_perserver, regression_data[-c(1,9,13),]$service_rate_perserver, pch = 16, col = "blue", xlab = "Arrival rate per server", ylab = "Service rate per server", main = "Regression Line and Points")
@@ -315,7 +319,13 @@ abline(regression_model, col = "red")
 legend("topleft", legend = c("Points", "Regression Line"), col = c("blue", "red"), pch = c(16, NA), lty = c(NA, 1))
 ```
 
-In our data, we have $\lambda<\hat{\mu}$, QoS level $\mathbb{P}(x)=1-\frac{\lambda}{\hat{a}c+\hat{b}\lambda}e^{-(\hat{a}c+\hat{b}\lambda-\lambda)x}=1-\frac{\lambda}{0.03544c+1.43244\lambda}e^{-(0.03544c+1.43244\lambda-\lambda)x}$
+The graph above shows clusters' observations $(\frac{\lambda}{c},\frac{\hat{\mu}}{c})$ lie on the regression line. The reason is that the number of open servers increases as $\lambda$ increases. This means when more arrivals occur, in order to control the number in queue, the airport will add new open servers reasonably to maintain balance.  
+
+Consider $M/M/1$ system, the probability of new arrival's wait time in queue is $x$ given that there are $n$ passengers before this new arrival in the system is $Gamma(n,\mu)$. Because we can make assumption that all services time are independent for each passenger and each one is exponential distribution with parameter $\mu$. Therefore a sum of $n$ independent exponentials is going to be a gamma distribution with parameters $n$ and $\mu$. Then we have $\mathbb{P}(x)=\sum_{n=1}^{\infty}\int_{0}^{x}\frac{\mu^{n}t^{n-1}e^{-\mu t}}{(n-1)!}dt(1-\rho)\rho^{n}=1-\rho e^{-u(1-\rho)x}$ where $\rho=\frac{\lambda}{\mu}$.
+We can conclude that QoS level $\mathbb{P}(x)=1-\rho e^{-\mu(1-\rho)x}$. We are considering $M/M/c$ as $M/M/1$ with a generalized server, thus we have $\mu=\hat{a}c+\hat{b}\lambda$ by regression result.
+
+$\lambda<\mu$ is a stable condition for queuing system. If the arrival rate $\lambda$ is greater than the service rate $\mu$, then the number in queue is unbounded. That means the queue would grow infinitely. This may happen in the real world, however the airport should improve service rates to cope with the sudden increase in arrivals, such as opening a new server.  
+In our data, we have $\lambda<\hat{\mu}$, QoS level $\mathbb{P}(x)=1-\frac{\lambda}{\hat{a}c+\hat{b}\lambda}e^{-(\hat{a}c+\hat{b}\lambda-\lambda)x}=1-\frac{\lambda}{0.03544c+1.43244\lambda}e^{-(0.03544c+1.43244\lambda-\lambda)x}$ and introduce Table 6.
 
 ```{r}
 # prediction of prob of waittime <x for given cluster related information and time x
@@ -352,6 +362,9 @@ P%>%kable(booktabs = TRUE,caption = "Performance Level")%>%
   row_spec(0,bold=TRUE)%>%
   column_spec(1,bold=TRUE)
 ```
+
+
+Table 6 told us the probability of waiting time spent in queue is less than 5 minutes up to 30 minutes, increases by 5 minutes, for each cluster respectively. The graph reflects the congestion level of queues at the airport at different times. The faster the curve approaches 1, the shorter the queue time that passengers can expect.
 
 ```{r}
 checkpoint <-0.0000001*exp(seq(0.1,19.5,0.1))
