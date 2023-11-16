@@ -27,6 +27,9 @@ library(tidyverse)
 library(kableExtra)
 library(htmlwidgets)
 library(webshot)
+
+axisfont<-list(size=36)
+mars<-list(l=0, r=0, b=0, t=20)
 ```
 
 ### Introduction
@@ -56,7 +59,7 @@ setdiff(colnames(Flight), colnames(BASA))
 
 BASA and Y2026 had the same variables, except that Y2026 has airfields other than Auckland.
 
-We gave a proper data definition in the following Table() for BASA data and for the unique variables in Passenger and Flight data in Table () and Table(). 
+We gave a proper data definition in the following Table 1 for BASA data and for the unique variables in Passenger and Flight data in Table 2 and Table 3. 
 
 ```{r}
 DataDict<-BASA%>%select(-X)
@@ -85,7 +88,7 @@ DataDict<-data.frame(
             "month of departure",
             "season of departure",
             "year of departure"
-            ), row.names = NULL
+  ), row.names = NULL
 )
 
 DataDict%>%kable(booktabs = TRUE,caption = "BASA Variable Definition")%>%
@@ -109,7 +112,7 @@ DataDict<-data.frame(
             "If Schedule departure is NA or not",
             "Flight ID",
             "Delay in seconds"
-            ),
+  ),
   row.names = NULL
 )
 
@@ -142,7 +145,7 @@ DataDict<-data.frame(
             "sum of the mode in the country",
             "number of destinated country",
             "delay second"
-            ), row.names = NULL
+  ), row.names = NULL
 )
 
 DataDict%>%kable(booktabs = TRUE,caption = "Flight Variable Definition")%>%
@@ -151,20 +154,19 @@ DataDict%>%kable(booktabs = TRUE,caption = "Flight Variable Definition")%>%
   row_spec(0,bold=TRUE)
 ```
 
-We must also pointed out that there were flaws in these data sets that we had to correct. The BASA data contained the useful information from the Passenger data, as we have explained earlier. However there was a discrepancy of 10 minutes between the BASA Schedule Departure time and the Passenger Schedule Departure time. We believed that this difference is a minor mistake. BASA data contained the least amount of mistakes overall, hence another reason for us to use the BASA data directly in our Queuing analysis. In addition, The Period_of_Week variable did not match with the Day_of_Week, therefore we have cleaned all these flaws before doing the subsequent analyses.
+We must also pointed out that there were flaws in these data sets that we had to correct. The BASA data contained the useful information from the Passenger data, as we have explained earlier. However there was a discrepancy of 10 minutes between the BASA Schedule Departure time and the Passenger Schedule Departure time. We believed that this difference is a minor mistake. BASA data contained the least amount of mistakes overall, hence another reason for us to use the BASA data directly in our queuing analysis. In addition, The Period_of_Week variable did not match with the Day_of_Week, therefore we have cleaned all these flaws before doing the subsequent analyses.
 
 ```{r}
 #clean BASA data:
 BASA<-BASA%>%mutate(Period_of_Week=case_when(
-    Day_of_Week=="6 - SAT" | Day_of_Week=="7 - SUN" ~ "2 - WEEKEND",
-    .default = "1 - WEEKDAY"
+  Day_of_Week=="6 - SAT" | Day_of_Week=="7 - SUN" ~ "2 - WEEKEND",
+  .default = "1 - WEEKDAY"
 ), S2=as.POSIXct(S2))
 ```
 
-
 ### Data exploration
 
-In the data Y2026, there were only two kinds of seasons: winter and autumn. Autumn contained only 7 data points and winter had 3219 points, which in total accounted for the bulk of the data. One can see from the Airfield column that although it contained the most types of airfields among the four data sets, except for SaintFrancois(SAF), the other three airfields had negligible proportions. The airfields in the data set BASA were all Auckland (AUC), whereas in Y2026 there were only four data points for which the airfield was AUC. Compared with BASA, Y2026 provided too little information. If we analyze the data of Y2026 based on the combination of categories of Time_of_ Day, Day_of_Week and Season respectively, the count of arrivals of Y2026 in most of clusters was almost zero, that is to say, the data of Y2026 was not very useful to the overall analysis, so we discard this data set.
+In the data Y2026, there were only two kinds of seasons: winter and autumn. Autumn contained only 7 data points and winter had 3219 points, which in total accounted for the bulk of the data. One can see from the Airfield column of Table 4 that although it contained the most types of airfields among the four data sets, except for SaintFrancois(SAF), the other three airfields had negligible proportions. The airfields in the data set BASA were all Auckland (AUC), whereas in Y2026 there were only four data points for which the airfield was AUC. Compared with BASA, Y2026 provided too little information. If we analyze the data of Y2026 based on the combination of categories of Time_of_ Day, Day_of_Week and Season respectively, the count of arrivals of Y2026 in most of clusters was almost zero, that is to say, the data of Y2026 was not very useful to the overall analysis, so we discard this data set.
 ```{r}
 Y2026%>%group_by(across(c(Airfield, Season, Time_of_Day, Day_of_Week), as.factor))%>%tally()%>%spread(key=Day_of_Week, value=n)%>%
   mutate(across(everything(),~ifelse(is.na(.), 0, .)))%>%
@@ -173,7 +175,7 @@ Y2026%>%group_by(across(c(Airfield, Season, Time_of_Day, Day_of_Week), as.factor
   row_spec(0,bold=TRUE)
 ```
 
-From the data definition Table() one can see the Wait_Time variable had nearly 15% missing data, thus deleting it will affect the result drastically. We chose to fill in the missing data with the mean value of the wait time. First, we divided the data based on the categories of Season(3 - SUMMER,4 - AUTUMN), Period_of_Week(1 - WEEKDAY,2 - WEEKEND), and Time_of_Day(1 - NIGHT,2 - MORNING,3 - AFTERNOON,4 - EVENING) into 16 clusters. Then we computed the mean value of the wait time in each cluster and used these means to fill the missing wait time of the corresponding cluster.
+From the data definition Table 1 one can see the Wait_Time variable had nearly 15% missing data, thus deleting it will affect the result drastically. We chose to fill in the missing data with the mean value of the wait time. First, we divided the data based on the categories of Season(3 - SUMMER,4 - AUTUMN), Period_of_Week(1 - WEEKDAY,2 - WEEKEND), and Time_of_Day(1 - NIGHT,2 - MORNING,3 - AFTERNOON,4 - EVENING) into 16 clusters. Then we computed the mean value of the wait time in each cluster and used these means to fill the missing wait time of the corresponding cluster.
 
 Airport queuing analysis can effectively improve passenger satisfaction and alleviate airport congestion. Imagine being a traveler at the airport and going through the boarding pass process. The process from entering the queue through S1 (recording the time of entering the queue) and leaving from S2 (recording the time of leaving the queue) to c number of open servers can be understood as a $M/M/c$ queue system. If we classify the data according to certain conditions, then for each cluster, we can convert the MMC problem into MM1 for analysis. The generalized server of each cluster has a special arrival rate and service rate.
 
@@ -201,9 +203,6 @@ BASA_fill<-map(BASA_fill, function(df){df%>%filter(!is.na(Wait_Time) & !is.na(C0
 BASA<-do.call(rbind, BASA_fill)
 ```
 
-According to the Figure(), we found that the number of passengers arrived in the morning, afternoon and evening were relatively equal. However, there was a distinct disparity in the evening, where the number of passengers showed a noticeable decline compared to the other three periods. This was expected because normally there is few flights between 0-6 o'clock or most of the people would not choose to fly in this time period. In addition, we found from Figure() that the wait time in a queue to go through the security check S2 for AFTERNOON and EVENING was mainly concentrated in 2-5 minutes, which was relatively shorter. 
-Notably, when the wait time exceeded 5 minutes, the number of passengers in the queue for MORNING was significantly higher than that for other periods, and in the morning, the passengers waiting in line for 6-7 minutes were the most numerous, totaling 8757. So we concluded that: The passengers in the morning experienced the longest wait times in line, and the queuing period of afternoon and evening were about the same, basically within 5 minutes.
-
 ```{r, echo=FALSE}
 #Classification according to Time_of_Day(Morning;Afternoon;Evening;Night)
 time_of_day_categories <- unique(BASA$Time_of_Day)
@@ -230,55 +229,56 @@ for (time_of_day in time_of_day_categories) {
 
 p0 <- layout(
   p0,
-  title = "Wait Time by Time_of_Day",
-  xaxis = list(title = "Wait Time(Minute)", range = c(0, 25)),
-  yaxis = list(title = "Number of Passengers"),
-  showlegend = TRUE,
-  font = list(size = 6)
-  )
+  margin=mars,
+  xaxis = list(title = list(text="Wait Time(Minute)", font=axisfont), tickfont=axisfont,range = c(0, 25)),
+  yaxis = list(title = list(text="Number of Passengers", font=axisfont), tickfont=axisfont),
+  legend=list(font=axisfont)
+)
 
 saveWidget(widget = p0, file = "./Figures/day_wt.html")
-shots<-webshot(url = "./Figures/day_wt.html", file = "./Figures/day_wt.png", delay = 1, zoom = 2, vheight = 200, vwidth = 300)
+shots<-webshot(url = "./Figures/day_wt.html", file = "./Figures/day_wt.png", delay = 1, zoom = 2)
 ```
 
-```{r, echo=FALSE, fig.align='center', fig.cap = "Wait Time with Different Time of Day"}
+```{r, echo=FALSE, fig.align='center', fig.cap = "Wait Time with Different Time of Day", out.height="3in", out.width="3in"}
 knitr::include_graphics("./Figures/day_wt.png")
 ```
 
-In order to compare the wait times for each Time_of_Day more accurately, we calculated their respective averages. As previously observed: the wait time in the morning was the longest, with an average of about 7 minutes; afternoon and evening had about the same wait time, with an average of approximately 4 minutes. Lastly, although there was very little data for the night, the average wait time for the night was the second longest, at around 6 minutes. Again one can expect this due to the lack of staff in the airport at night.
+According to the Figure 1, we found that the number of passengers arrived in the morning, afternoon and evening were relatively equal. However, there was a distinct disparity in the evening, where the number of passengers showed a noticeable decline compared to the other three periods. This was expected because normally there is few flights between 0-6 o'clock or most of the people would not choose to fly in this time period. In addition, we found from Figure 1 that the wait time in a queue to go through the security check S2 for AFTERNOON and EVENING was mainly concentrated in 2-5 minutes, which was relatively shorter. Notably, when the wait time exceeded 5 minutes, the number of passengers in the queue for MORNING was significantly higher than that for other periods, and in the morning, the passengers waiting in line for 6-7 minutes were the most numerous, totaling 8757. So we concluded that: The passengers in the morning experienced the longest wait times in line, and the queuing period of afternoon and evening were about the same, basically within 5 minutes.
+
+In order to compare the wait times for each Time_of_Day more accurately, we calculated their respective averages shown in Figure 2. As previously observed: the wait time in the morning was the longest, with an average of about 7 minutes; afternoon and evening had about the same wait time, with an average of approximately 4 minutes. Lastly, although there was very little data for the night, the average wait time for the night was the second longest, at around 6 minutes. Again one can expect this due to the lack of staff in the airport at night.
 
 ```{r, echo=FALSE}
 # Average Wait_Time for each Time_of_Day
 avg_time_day <- tapply(BASA$Wait_Time, BASA$Time_of_Day, mean)
 
 avg_time_day_df <- data.frame(Time_of_Day = names(avg_time_day),
-                               Average_Wait_Time = avg_time_day)
+                              Average_Wait_Time = avg_time_day)
 
-ad <- plot_ly(
-  x = avg_time_day_df$Time_of_Day,
-  y = avg_time_day_df$Average_Wait_Time,
-  type = "bar",
-  name = "Average Wait Time",
+ad <- avg_time_day_df%>%plot_ly(
+  x = ~Time_of_Day,
+  y = ~Average_Wait_Time,
+  type = "bar",height = 1000,
   marker = list(color = "lightblue", line = list(color = "black")),
-              text = avg_time_day_df$Average_Wait_Time,
-              textposition = "outside",
-              textfont = list(size = 6)) %>%
+  text = ~round(Average_Wait_Time,3),
+  textposition = "outside",
+  textfont=axisfont) %>%
   layout(
-    title = "Average Wait Time by Time_of_Day",
-    xaxis = list(title = "Time_of_Day"),
-    yaxis = list(title = "Average Wait Time"),
-    font = list(size = 6)
+    margin=mars,
+    xaxis = list(title = list(text="Time_of_Day", font=axisfont), tickfont=axisfont),
+    yaxis = list(title = list(text="Average Wait Time", font=axisfont), tickfont=axisfont),
+    legend=list(font = axisfont),
+    font=axisfont
   )
 
 saveWidget(widget = ad, file = "./Figures/a_day_wt.html")
-shots<-webshot(url = "./Figures/a_day_wt.html", file = "./Figures/a_day_wt.png", delay = 1, zoom = 2, vheight = 200, vwidth = 250)
+shots<-webshot(url = "./Figures/a_day_wt.html", file = "./Figures/a_day_wt.png", delay = 1, zoom = 2)
 ```
 
-```{r, echo=FALSE, fig.align='center', fig.cap = "Average Wait Time with Different Time of Day"}
+```{r, echo=FALSE, fig.align='center', fig.cap = "Average Wait Time with Different Time of Day", out.height="3in", out.width="3in"}
 knitr::include_graphics("./Figures/a_day_wt.png")
 ```
 
-Next, we compared and analyzed the wait time with different day of week, and the result was shown in Figure(). On the whole, the longer the wait time was, the less the number of passengers was. In addition, we found that regardless of the day of the week, when the wait time was within the range of 2-5 minutes, the number of passengers was significantly more than others, in which the queue on Saturday was the largest, with a total of 11,994 passengers, followed by Wednesday(11,656). When the wait time was greater than or equal to 6 minutes, the number of people queuing up for S2 on Thursday was the largest; in contrast, Monday's passengers count was basically the smallest. Thus, we concluded that Thursday's wait time was the longest, while Monday's wait time was the shortest.
+Next, we compared and analyzed the wait time with different day of week, and the result was shown in Figure 3. On the whole, the longer the wait time was, the less the number of passengers was. In addition, we found that regardless of the day of the week, when the wait time was within the range of 2-5 minutes, the number of passengers was significantly more than others, in which the queue on Saturday was the largest, with a total of 11,994 passengers, followed by Wednesday(11,656). When the wait time was greater than or equal to 6 minutes, the number of people queuing up for S2 on Thursday was the largest; in contrast, Monday's passengers count was basically the smallest. Thus, we concluded that Thursday's wait time was the longest, while Monday's wait time was the shortest.
 
 ```{r, echo=FALSE}
 #Classification by day of the week
@@ -298,7 +298,7 @@ for (day_of_week in day_of_week_categories) {
     "6 - SAT" = "brown",
     "7 - SUN" = "pink"
   )
-
+  
   p2 <- add_trace(
     p2,
     type = "histogram",
@@ -311,53 +311,51 @@ for (day_of_week in day_of_week_categories) {
 
 p2 <- layout(
   p2,
-  title = "Wait Time by Day_of_Week",
-  xaxis = list(title = "Wait Time(Minute)", range = c(0, 25)),
-  yaxis = list(title = "Number of Passengers"),
-  showlegend = TRUE,
-  font = list(size = 6)
+  margin=mars,
+  xaxis = list(title = list(text="Wait Time(Minute)", font=axisfont), tickfont=axisfont, range = c(0, 25)),
+  yaxis = list(title = list(text="Number of Passengers", font=axisfont), tickfont=axisfont),
+  legend=list(font = axisfont)
 )
 
 saveWidget(widget = p2, file = "./Figures/week_wt.html")
-shots<-webshot(url = "./Figures/week_wt.html", file = "./Figures/week_wt.png", delay = 1, zoom = 2, vheight = 200, vwidth = 400)
+shots<-webshot(url = "./Figures/week_wt.html", file = "./Figures/week_wt.png", delay = 1, zoom = 2)
 ```
 
-```{r, echo=FALSE, fig.align='center', fig.cap = "Wait Time with Different Day of Week"}
+```{r, echo=FALSE, fig.align='center', fig.cap = "Wait Time with Different Day of Week", out.height="3in", out.width="3in"}
 knitr::include_graphics("./Figures/week_wt.png")
 ```
 
-
-Figure() presented the average wait time for each day of the week. As we had mentioned earlier, Thursday's average wait time was the longest, at nearly 7 minutes; Monday's wait time was the shortest with an average of 4.37 minutes. Tuesday, Saturday and Sunday had about equal wait times, around 5 minutes. On the other hand, Wednesday and Friday reported average wait times within the 5-6 minute range.
+Figure 4 presented the average wait time for each day of the week. As we had mentioned earlier, Thursday's average wait time was the longest, at nearly 7 minutes; Monday's wait time was the shortest with an average of 4.37 minutes. Tuesday, Saturday and Sunday had about equal wait times, around 5 minutes. On the other hand, Wednesday and Friday reported average wait times within the 5-6 minute range.
 
 ```{r, echo=FALSE}
 #Average Wait_Time per Day_of_Week
 avg_time <- tapply(BASA$Wait_Time, BASA$Day_of_Week, mean)
 
 avg_time_df <- data.frame(Day_of_Week = names(avg_time),
-                               Average_Wait_Time = avg_time)
+                          Average_Wait_Time = avg_time)
 
-aw <- plot_ly(x = avg_time_df$Day_of_Week,
-              y = avg_time_df$Average_Wait_Time,
-              type = "bar",
-              name = "Average Wait Time",
+aw <- avg_time_df%>%plot_ly(x = ~Day_of_Week,
+              y = ~Average_Wait_Time,
+              type = "bar",height = 1000,
               marker = list(color = "lightblue", line = list(color = "black")),
-              text = avg_time_df$Average_Wait_Time,
+              text = ~round(Average_Wait_Time,3),
               textposition = "outside",
-              textfont = list(size = 6)) %>%
-  layout(title = "Average Wait Time by Day of Week",
-         xaxis = list(title = "Day of Week"),
-         yaxis = list(title = "Average Wait Time"),
-         font = list(size = 6))
+              textfont = axisfont) %>%
+  layout(margin=mars,
+         xaxis = list(title = list(text="Day of Week", font=axisfont), tickfont=axisfont),
+         yaxis = list(title = list(text="Average Wait Time", font=axisfont), tickfont=axisfont),
+        legend=list(font = axisfont), font=axisfont
+)
 
 saveWidget(widget = aw, file = "./Figures/a_week_wt.html")
-shots<-webshot(url = "./Figures/a_week_wt.html", file = "./Figures/a_week_wt.png", delay = 1, zoom = 2, vheight = 150, vwidth = 250)
+shots<-webshot(url = "./Figures/a_week_wt.html", file = "./Figures/a_week_wt.png", delay = 1, zoom = 2)
 ```
 
-```{r, echo=FALSE, fig.align='center', fig.cap = "Average Wait Time with Different Day of Week"}
+```{r, echo=FALSE, fig.align='center', fig.cap = "Average Wait Time with Different Day of Week", out.height="3in", out.width="3in"}
 knitr::include_graphics("./Figures/a_week_wt.png")
 ```
 
-Then, we examined the disparities in wait time and passenger volumes based on seasons. Since the data for Spring and Winter were too scarce, we ignored them and only compared Summer and Autumn's wait time. When the range of wait time shifted from 0-1 minute to 1-2 minutes, there was a significant increase in the number of people in the queue.Specifically, the number of people waiting in line for S2 during Summer increased from 1,714 to over 10,162, while in Autumn, it surged from 4,232 to 27,792—marking the highest count in both seasons across various wait time ranges. As the wait time exceeded 2 minutes, the number of passengers in line decreased for both Summer and Autumn. However, regardless of the wait time range, the queue attendance for S2 during Autumn consistently exceeded that of Summer.
+Then, we examined the disparities in wait time and passenger volumes based on seasons in Figure 5. Since the data for Spring and Winter were too scarce, we ignored them and only compared Summer and Autumn's wait time. When the range of wait time shifted from 0-1 minute to 1-2 minutes, there was a significant increase in the number of people in the queue. Specifically, the number of people waiting in line for S2 during Summer increased from 1,714 to over 10,162, while in Autumn, it surged from 4,232 to 27,792—marking the highest count in both seasons across various wait time ranges. As the wait time exceeded 2 minutes, the number of passengers in line decreased for both Summer and Autumn. However, regardless of the wait time range, the queue attendance for S2 during Autumn consistently exceeded that of Summer.
 
 ```{r, echo=FALSE}
 #Classification according to Season
@@ -374,7 +372,7 @@ for (season in season_categories) {
     "3 - SUMMER" = "lightblue",
     "4 - AUTUMN" = "orange",
   )
-
+  
   p3 <- add_trace(
     p3,
     type = "histogram",
@@ -387,55 +385,52 @@ for (season in season_categories) {
 
 p3 <- layout(
   p3,
-  title = "Wait Time by Season",
-  xaxis = list(title = "Wait Time(Minute)", range = c(0, 23)),  # Closing parenthesis added here
-  yaxis = list(title = "Number of Passengers"),
-  showlegend = TRUE,
-  font = list(size = 6)
+  margin=mars,
+  xaxis = list(title = list(text="Wait Time(Minute)", font=axisfont), tickfont=axisfont, range = c(0, 23)),  # Closing parenthesis added here
+  yaxis = list(title = list(text="Number of Passengers", font=axisfont), tickfont=axisfont),
+  legend=list(font = axisfont)
 )
 
 saveWidget(widget = p3, file = "./Figures/season_wt.html")
-shots<-webshot(url = "./Figures/season_wt.html", file = "./Figures/season_wt.png", delay = 1, zoom = 2, vheight = 200, vwidth = 300)
+shots<-webshot(url = "./Figures/season_wt.html", file = "./Figures/season_wt.png", delay = 1, zoom = 2)
 ```
 
-```{r, echo=FALSE, fig.align='center', fig.cap = "Wait Time with Different Season"}
+```{r, echo=FALSE, fig.align='center', fig.cap = "Wait Time with Different Season", out.height="3in", out.width="3in"}
 knitr::include_graphics("./Figures/season_wt.png")
 ```
 
-
-Figure() revealed that the average duration of security line waits remained consistently above five minutes across both seasons, with a negligible difference of approximately thirty seconds. This meant that while seasonal changes substantially influenced airport passenger traffic, their impact on security queue wait time was relatively minor.
+Figure 6 revealed that the average duration of security line waits remained consistently above five minutes across both seasons, with a negligible difference of approximately thirty seconds. This meant that while seasonal changes substantially influenced airport passenger traffic, their impact on security queue wait time was relatively minor.
 ```{r, echo=FALSE}
 #Average Wait_Time for each Season
 avg_time_season <- tapply(BASA$Wait_Time, BASA$Season, mean)
 
 avg_time_season_df <- data.frame(Season = names(avg_time_season),
-                               Average_Wait_Time = avg_time_season)
+                                 Average_Wait_Time = avg_time_season)
 
-as <- plot_ly(
-  x = avg_time_season_df$Season,
-  y = avg_time_season_df$Average_Wait_Time,
-  type = "bar",
+as <- avg_time_season_df%>%plot_ly(
+  x = ~Season,
+  y = ~Average_Wait_Time,
+  type = "bar",height = 1000,
   name = "Average Wait Time",
   marker = list(color = "lightblue", line = list(color = "black")),
-              text = avg_time_season_df$Average_Wait_Time,
-              textposition = "outside",
-              textfont = list(size = 6)) %>%
-  layout(
-    title = "Average Wait Time by Season",
-    xaxis = list(title = "Season"),
-    yaxis = list(title = "Average Wait Time"),
-    font = list(size = 6)
+  text = ~round(Average_Wait_Time,3),
+  textposition = "outside",
+  textfont = axisfont) %>%
+  layout(margin=mars,
+         xaxis = list(title = list(text="Season",font=axisfont), tickfont=axisfont),
+         yaxis = list(title = list(text="Average Wait Time",font = axisfont), tickfont=axisfont),
+         legend=list(font = axisfont), font=axisfont
   )
 
 saveWidget(widget = as, file = "./Figures/a_season_wt.html")
-shots<-webshot(url = "./Figures/a_season_wt.html", file = "./Figures/a_season_wt.png", delay = 1, zoom = 2, vheight = 250, vwidth = 250)
+shots<-webshot(url = "./Figures/a_season_wt.html", file = "./Figures/a_season_wt.png", delay = 1, zoom = 2)
 ```
 
-```{r, echo=FALSE, fig.align='center', fig.cap = "Average Wait Time with Different Season"}
+```{r, echo=FALSE, fig.align='center', fig.cap = "Average Wait Time with Different Season", out.height="3in", out.width="3in"}
 knitr::include_graphics("./Figures/a_season_wt.png")
 ```
 
-Subsequent analysis focused on comparing the quantity of servers at checkpoint S2 (C0) during different times of day (NIGHT; MORNING; AFTERNOON; EVENING). Due to data limitations, NIGHT time data could not be visualized in Figure(). With C0 at 0-1, AFTERNOON witnessed the highest passenger count (33,704) and MORNING registering the lowest (15,881). Conversely, when C0 increased to 2-3, MORNING experienced the highest queue volume (21,762), with AFTERNOON having the least (7,792). When the queue size at the airport in the morning increased by 5000, the number of servers for C0 increased from 0-1 to 2-3. This trend suggested that the airport strategically raised the number of servers in the MORNING by 1-2 to reduce passengers' wait time.
+Subsequent analysis focused on comparing the quantity of servers at checkpoint S2 (C0) during different times of day. Due to data limitations, NIGHT time data could barely be seen in Figure 7. With C0 between 0-1, AFTERNOON had the highest passenger count (33,704) and MORNING had the lowest (15,881). Conversely, when C0 increased to 2-3, MORNING had the highest queue volume (21,762), and AFTERNOON had the least (7,792). When the queue size at the airport in the morning increased by 5000, the number of servers for C0 increased from 0-1 to 2-3. This trend suggested that the airport strategically raised the number of servers in the MORNING by 1-2 to reduce passengers' wait time.
 
 ```{r, echo=FALSE}
 #Number of C0 (servers of S2) with different Time_of_Day
@@ -461,50 +456,49 @@ for (time_of_day in time_of_day_categories) {
 
 p4 <- layout(
   p4,
-  title = "The Number of Security Agents at S2 by Time_of_Day",
-  xaxis = list(title = "The Number of Security Agents"),
-  yaxis = list(title = "Number of Passengers"),
-  showlegend = TRUE,
-  font = list(size = 6)
+  margin=mars,
+  xaxis = list(title = list(text="The Number of Security Agents",font=axisfont), tickfont=axisfont),
+  yaxis = list(title = list(text="Number of Passengers",font=axisfont), tickfont=axisfont),
+  legend=list(font = axisfont)
 )
 
 saveWidget(widget = p4, file = "./Figures/day_C0.html")
-shots<-webshot(url = "./Figures/day_C0.html", file = "./Figures/day_C0.png", delay = 1, zoom = 2, vheight = 200, vwidth = 300)
+shots<-webshot(url = "./Figures/day_C0.html", file = "./Figures/day_C0.png", delay = 1, zoom = 2)
 ```
 
-```{r, echo=FALSE, fig.align='center', fig.cap = "Number of C0 (servers of S2) with Different Time of Day"}
+```{r, echo=FALSE, fig.align='center', fig.cap = "Number of Servers of S2 (C0) with Different Time of Day", out.height="3in", out.width="3in"}
 knitr::include_graphics("./Figures/day_C0.png")
 ```
 
-From Figure(), we found that the average number of security agents at S2 in the morning was the highest, approximately 1.60. The evening period followed closely with an average of 1.37. And the night's average number of servers was comparable to the average for the afternoon, around 1.20 servers. Overall, we found that the number of servers was rather uniformly distributed around 1.3, which supported our M/M/1 model assumption in the subsequent Queuing Analysis.
+From Figure 8 we found that the average number of security agents at S2 in the morning was the highest, approximately 1.60. The evening period followed closely with an average of 1.37. And the night's average number of servers was comparable to the average for the afternoon, around 1.20 servers. Overall, we found that the number of servers was rather uniformly distributed around 1.3, which supported our M/M/1 model assumption in the subsequent Queuing Analysis.
+
 ```{r, echo=FALSE}
 # Average C0(The Number of Security Agents at S2) for each Time_of_Day
 avg_time_day <- tapply(BASA$C0, BASA$Time_of_Day, mean)
 
 avg_time_day_df <- data.frame(Time_of_Day = names(avg_time_day),
-                               Average_C0 = avg_time_day)
+                              Average_C0 = avg_time_day)
 
-a_C0 <- plot_ly(
-  x = avg_time_day_df$Time_of_Day,
-  y = avg_time_day_df$Average_C0,
-  type = "bar",
-  name = "Average Number of Security Agents at S2(C0)",
+a_C0 <- avg_time_day_df%>%plot_ly(
+  x = ~Time_of_Day,
+  y = ~Average_C0,
+  type = "bar",height = 1000,
   marker = list(color = "lightblue", line = list(color = "black")),
-              text = avg_time_day_df$Average_C0,
-              textposition = "outside",
-              textfont = list(size = 14)) %>%
+  text = ~round(Average_C0,3),
+  textposition = "outside",
+  textfont = axisfont) %>%
   layout(
-    title = "Average Number of Security Agents at S2(C0) by Time_of_Day",
-    xaxis = list(title = "Time_of_Day"),
-    yaxis = list(title = "Average Number of Security Agents at S2(C0)"),
-    font = list(size = 6)
+    margin=mars,
+    xaxis = list(title = list(text="Time_of_Day",font=axisfont), tickfont=axisfont),
+    yaxis = list(title = list(text="Average Number of Security Agents at S2(C0)",font=axisfont), tickfont=axisfont),
+    legend=list(font = axisfont), font=axisfont
   )
 
 saveWidget(widget = a_C0, file = "./Figures/a_day_C0.html")
-shots<-webshot(url = "./Figures/a_day_C0.html", file = "./Figures/a_day_C0.png", delay = 1, zoom = 2, vheight = 250, vwidth = 400)
+shots<-webshot(url = "./Figures/a_day_C0.html", file = "./Figures/a_day_C0.png", delay = 1, zoom = 2)
 ```
 
-```{r, echo=FALSE, fig.align='center', fig.cap = "Average Number of C0 (servers of S2) with Different Time of Day"}
+```{r, echo=FALSE, fig.align='center', fig.cap = "Average Number of Servers of S2 (C0) with Different Time of Day", out.height="3in", out.width="3in"}
 knitr::include_graphics("./Figures/a_day_C0.png")
 ```
 
@@ -534,19 +528,19 @@ Result<-do.call(rbind, map(BASA_fill, MakeTbl))
 
 ```{r}
 Result%>%select(-c(Season, Period_of_Week,Time_of_Day))%>%
-  kable(booktabs = TRUE,caption = "Result")%>%
+  kable(booktabs = TRUE,caption = "Estimates of Parameters")%>%
   kable_styling(font_size=7, latex_options=c("striped","scale_down", "hold_position"))%>%
   row_spec(0,bold=TRUE)
 ```
 
-Table() showed the arrival rate, service rate, average waiting time and average server of each group. Since there were no passengers on summer weekend nights and the average waiting time on autumn weekend nights was missing, the relevant parameters of these two clusters cannot be known. It is clearly observed that longer waiting time is expected during the day compared to the night. It can be seen from the arrival rate that the airport had more passengers during the day than the night. Service rates also reflect the airport's increase in open servers to cope with high traffic. This is reasonably consistent with reality.  
+Table 5 showed the arrival rate, service rate, average waiting time and average server of each group. Since there were no passengers on summer weekend nights and the average waiting time on autumn weekend nights was missing, the relevant parameters of these two clusters cannot be known. It is clearly observed that longer waiting time is expected during the day compared to the night. It can be seen from the arrival rate that the airport had more passengers during the day than the night. Service rates also reflect the airport's increase in open servers to cope with high traffic. This is reasonably consistent with reality.  
 
-Recall that we were considering a multi-servers queue system $M/M/c$ with a generalized number of servers c.  
+Recall that we were considering a multi-servers queue system $M/M/c$ with a generalized number of servers c [@PPT].  
 
 ```{r}
 regression_data <-Result%>%transmute(Avg_Servers, Arrival_Rate,Service_Rate,
-                                    arrival_rate_perserver=Arrival_Rate/Avg_Servers,
-                                    service_rate_perserver=Service_Rate/Avg_Servers)
+                                     arrival_rate_perserver=Arrival_Rate/Avg_Servers,
+                                     service_rate_perserver=Service_Rate/Avg_Servers)
 
 # Regression model
 regression_model<- lm(service_rate_perserver ~ arrival_rate_perserver,data = regression_data[-c(1,9,13),])
@@ -559,10 +553,10 @@ regression_data%>%
   row_spec(0,bold=TRUE)
 ```
 
-From Table(), we noticed that there may be a positive correlation between the service rate per server and the arrival rate per server. We assumed a linear relationship between them, say $\frac{\mu}{c}=a+b\cdot \frac{\lambda}{c}$, that is, $\mu=\mu(\lambda,c)=ac+b\lambda$, where $\lambda$ was the arrival rate, $c$ was the average number of servers, and $\mu$ was the service rate. We performed a linear regression on these two variables and got $\hat{a}=$ `r regression_model$coefficients[1]` and $\hat{b}=$ `r regression_model$coefficients[2]`. The Figure() below reflected this linear positive relationship and the clusters' observations $(\frac{\lambda}{c},\frac{\hat{\mu}}{c})$ closely lied on the regression line. .  
+From Table 6, we noticed that there may be a positive correlation between the service rate per server and the arrival rate per server. We assumed a linear relationship between them, say $\frac{\mu}{c}=a+b\cdot \frac{\lambda}{c}$, that is, $\mu=\mu(\lambda,c)=ac+b\lambda$, where $\lambda$ was the arrival rate, $c$ was the average number of servers, and $\mu$ was the service rate. We performed a linear regression on these two variables and got $\hat{a}=$ `r regression_model$coefficients[1]` and $\hat{b}=$ `r regression_model$coefficients[2]`. The Figure 9 below reflected this linear positive relationship and the clusters' observations $(\frac{\lambda}{c},\frac{\hat{\mu}}{c})$ closely lied on the regression line. .  
 
-```{r}
-plot(regression_data[-c(3,4),]$arrival_rate_perserver, regression_data[-c(3,4),]$service_rate_perserver, pch = 16, col = "blue", xlab = "Arrival rate per server", ylab = "Service rate per server", main = "Regression Line and Points")
+```{r, fig.cap="Regression Line and Points"}
+plot(regression_data[-c(3,4),]$arrival_rate_perserver, regression_data[-c(3,4),]$service_rate_perserver, pch = 16, col = "blue", xlab = "Arrival rate per server", ylab = "Service rate per server")
 
 abline(regression_model, col = "red")
 
@@ -577,7 +571,7 @@ We can conclude that QoS level is $\mathbb{P}(x)=1-\rho e^{-\mu(1-\rho)x}$. We a
 
 $\lambda<\mu$ is a stable condition for queuing system. If the arrival rate $\lambda$ is greater than the service rate $\mu$, then the number in queue is unbounded. That means the queue would grow infinitely. This cannot happen in reality because the airport would increase service rates by providing more staff to cope with the sudden increase in arrivals, however one can still experience a very long period in a queue under some extreme situations.  
 
-In our data, we had $\lambda<\hat{\mu}$ and the QoS level $\mathbb{P}(x)=1-\frac{\lambda}{\hat{a}c+\hat{b}\lambda}e^{-(\hat{a}c+\hat{b}\lambda-\lambda)x}=1-\frac{\lambda}{0.064+1.096\lambda}e^{-(0.064+1.096\lambda-\lambda)x}$ shown in Table().
+In our data, we had $\lambda<\hat{\mu}$ and the QoS level $\mathbb{P}(x)=1-\frac{\lambda}{\hat{a}c+\hat{b}\lambda}e^{-(\hat{a}c+\hat{b}\lambda-\lambda)x}=1-\frac{\lambda}{0.064+1.096\lambda}e^{-(0.064+1.096\lambda-\lambda)x}$ shown in Table 7.
 
 ```{r}
 # prediction of prob of waittime <x for given cluster related information and time x
@@ -596,12 +590,12 @@ PlotCDF<-function(df, Time){
   df<-cbind(Time, df)
   df<-df%>%gather("Cluster", "Value",2:length(df))
   p<-ggplot(df, aes(x = Time, y = Value, color = Cluster)) +
-      geom_line() +
-      labs(x = "Time in mins", y = "CDF") +
+    geom_line() +
+    labs(x = "Time in mins", y = "CDF") +
     guides(fill=guide_legend(byrow = TRUE)) +
     theme(legend.spacing.y=unit(0.01, "cm"), legend.key.height = unit(0.01,"cm"))
   print(p)
-  }
+}
 ```
 
 ```{r}
@@ -618,8 +612,7 @@ P%>%kable(booktabs = TRUE,caption = "Performance Level")%>%
   column_spec(1,bold=TRUE)
 ```
 
-
-In general, Table() is the probability distribution of waiting time spent in queue for each cluster respectively. For better visualization, we plotted the cumulative density function in Figure(). It reflected the congestion level of queues at the airport at different times. The faster the density curve approaches to 1, the shorter the queue time that passengers can expect. For example, we can see from the figure that the airport was busier in the evenings on summer weekdays, and passengers were expected to spend more time waiting in queues. The airport management can also try to add new servers during this time period to alleviate the pressure on traffic. In addition, we noticed that the upper part of the graph contains several curves that quickly approach 0. The starting points $(0, \mathbb{P}(0))$ of these curves are close to 1, which indicated that during these times, there were very few or no people in the queue, and passengers can directly pass through the queue and enter the server. This situation mostly occurs at night, possibly due to the low number of passenger arrivals caused by the low number of scheduled flights at the airport during the period.
+In general, Table 7 is the probability distribution of waiting time spent in queue for each cluster respectively. For better visualization, we plotted the cumulative density function in Figure 10. It reflected the congestion level of queues at the airport at different times. The faster the density curve approaches to 1, the shorter the queue time that passengers can expect. For example, we can see from the figure that the airport was busier in the evenings on summer weekdays, and passengers were expected to spend more time waiting in queues. The airport management can also try to add new servers during this time period to alleviate the pressure on traffic. In addition, we noticed that the upper part of the graph contains several curves that quickly approach 0. The starting points $(0, \mathbb{P}(0))$ of these curves are close to 1, which indicated that during these times, there were very few or no people in the queue, and passengers can directly pass through the queue and enter the server. This situation mostly occurs at night, possibly due to the low number of passenger arrivals caused by the low number of scheduled flights at the airport during the period.
 
 ```{r,fig.height=3, fig.width=9, fig.cap = "Cumulative Distribution Function by Cluster Level"}
 checkpoint <-0.0000001*exp(seq(0.1,19.5,0.1))
