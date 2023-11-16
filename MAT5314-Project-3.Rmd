@@ -196,7 +196,8 @@ BASA <- BASA %>% filter(!is.na(Wait_Time))
 BASA <- BASA %>% filter(!is.na(C0))
 ```
 
-According to the Figure() "Wait Time by Time_of_Day", we found that the number of passengers arrived in the morning, afternoon and evening were relatively average, but the number of passengers in the evening had a very obvious gap compared to other three periods, i.e., the number of arrivals at night was very small. This was expected because normally there is few flights between 0-6 o'clock or most of the people would not choose to fly in this time period. In addition, we found from Figure() that the wait time in a queue to go through the security check S2 for AFTERNOON and EVENING was mainly concentrated in 2-5 minutes, which was relatively shorter. When the wait time was greater than 5 MINUTES, the number of passengers in the queue for MORNING was significantly higher than that for other periods, and when the wait time was between 6-7 minutes, MORNING had the most passenger arrivals, totaling 8757. So we concluded that: MORNING had the longest waiting time, and the queuing period of AFTERNOON and EVENING were about the same, basically within 5 minutes.
+According to the Figure(), we found that the number of passengers arrived in the morning, afternoon and evening were relatively equal. However, there was a distinct disparity in the evening, where the number of passengers showed a noticeable decline compared to the other three periods. This was expected because normally there is few flights between 0-6 o'clock or most of the people would not choose to fly in this time period. In addition, we found from Figure() that the wait time in a queue to go through the security check S2 for AFTERNOON and EVENING was mainly concentrated in 2-5 minutes, which was relatively shorter. 
+Notably, when the wait time exceeded 5 minutes, the number of passengers in the queue for MORNING was significantly higher than that for other periods, and in the morning, the passengers waiting in line for 6-7 minutes were the most numerous, totaling 8757. So we concluded that: The passengers in the morning experienced the longest wait times in line, and the queuing period of afternoon and evening were about the same, basically within 5 minutes.
 
 ```{r, echo=FALSE}
 #Classification according to Time_of_Day(Morning;Afternoon;Evening;Night)
@@ -227,13 +228,19 @@ p0 <- layout(
   title = "Wait Time by Time_of_Day",
   xaxis = list(title = "Wait Time(Minute)", range = c(0, 25)),
   yaxis = list(title = "Number of Passengers"),
-  showlegend = TRUE
-)
+  showlegend = TRUE,
+  font = list(size = 6)
+  )
 
-p0
+saveWidget(widget = p0, file = "./Figures/day_wt.html")
+shots<-webshot(url = "./Figures/day_wt.html", file = "./Figures/day_wt.png", delay = 1, zoom = 2, vheight = 200, vwidth = 300)
 ```
 
-In order to compare the wait times for each Time_of_Day more accurately, we calculated their respective averages. As previously observed: the wait time in the morning was the longest, with an average of about 7 minutes; and afternoon and evening had about the same wait time, with an average of approximately 4 minutes. Lastly, although there was very little data for the night, the average wait time for the night was the second longest, at around 6 minutes. Again one can expect this due to the lack of staff in the airport at night.
+```{r, echo=FALSE, fig.align='center', fig.cap = "Wait Time with Different Time of Day"}
+knitr::include_graphics("./Figures/day_wt.png")
+```
+
+In order to compare the wait times for each Time_of_Day more accurately, we calculated their respective averages. As previously observed: the wait time in the morning was the longest, with an average of about 7 minutes; afternoon and evening had about the same wait time, with an average of approximately 4 minutes. Lastly, although there was very little data for the night, the average wait time for the night was the second longest, at around 6 minutes. Again one can expect this due to the lack of staff in the airport at night.
 
 ```{r, echo=FALSE}
 # Average Wait_Time for each Time_of_Day
@@ -242,7 +249,7 @@ avg_time_day <- tapply(BASA$Wait_Time, BASA$Time_of_Day, mean)
 avg_time_day_df <- data.frame(Time_of_Day = names(avg_time_day),
                                Average_Wait_Time = avg_time_day)
 
-plot_ly(
+ad <- plot_ly(
   x = avg_time_day_df$Time_of_Day,
   y = avg_time_day_df$Average_Wait_Time,
   type = "bar",
@@ -250,15 +257,23 @@ plot_ly(
   marker = list(color = "lightblue", line = list(color = "black")),
               text = avg_time_day_df$Average_Wait_Time,
               textposition = "outside",
-              textfont = list(size = 14)) %>%
+              textfont = list(size = 6)) %>%
   layout(
     title = "Average Wait Time by Time_of_Day",
     xaxis = list(title = "Time_of_Day"),
-    yaxis = list(title = "Average Wait Time")
+    yaxis = list(title = "Average Wait Time"),
+    font = list(size = 6)
   )
+
+saveWidget(widget = ad, file = "./Figures/a_day_wt.html")
+shots<-webshot(url = "./Figures/a_day_wt.html", file = "./Figures/a_day_wt.png", delay = 1, zoom = 2, vheight = 200, vwidth = 250)
 ```
 
-Next, we compared and analyzed the wait time by Day_of_Week, and the result was shown in Figure() "Wait Time by Day_of_Week". On the whole, the longer the wait time was, the less the number of passengers was. In addition, we found that regardless of the day of the week, when the wait time was within the range of 2-5 minutes, the number of passengers was significantly more than other wait time's number of passengers, in which the queue on Saturday was the largest, with a total of 11,994 passengers, followed by Wednesday, with a total of 11,656 passengers. When the wait time was greater than or equal to 6 minutes, for any wait time, the number of people queuing up for S2 on Thursday was the largest; in contrast, the number of passengers queuing up for S2 on Monday was basically the smallest. Thus, we concluded that Thursday's wait time was the longest, while Monday's wait time was the shortest.
+```{r, echo=FALSE, fig.align='center', fig.cap = "Average Wait Time with Different Time of Day"}
+knitr::include_graphics("./Figures/a_day_wt.png")
+```
+
+Next, we compared and analyzed the wait time with different day of week, and the result was shown in Figure(). On the whole, the longer the wait time was, the less the number of passengers was. In addition, we found that regardless of the day of the week, when the wait time was within the range of 2-5 minutes, the number of passengers was significantly more than others, in which the queue on Saturday was the largest, with a total of 11,994 passengers, followed by Wednesday(11,656). When the wait time was greater than or equal to 6 minutes, the number of people queuing up for S2 on Thursday was the largest; in contrast, Monday's passengers count was basically the smallest. Thus, we concluded that Thursday's wait time was the longest, while Monday's wait time was the shortest.
 
 ```{r, echo=FALSE}
 #Classification by day of the week
@@ -292,15 +307,22 @@ for (day_of_week in day_of_week_categories) {
 p2 <- layout(
   p2,
   title = "Wait Time by Day_of_Week",
-  xaxis = list(title = "Wait Time(Minute)", range = c(0, 30)),
+  xaxis = list(title = "Wait Time(Minute)", range = c(0, 25)),
   yaxis = list(title = "Number of Passengers"),
-  showlegend = TRUE
+  showlegend = TRUE,
+  font = list(size = 6)
 )
 
-p2
+saveWidget(widget = p2, file = "./Figures/week_wt.html")
+shots<-webshot(url = "./Figures/week_wt.html", file = "./Figures/week_wt.png", delay = 1, zoom = 2, vheight = 200, vwidth = 400)
 ```
 
-Figure() "Average Wait Time by Day of Week" showed the average wait time for each day of the week. As we had mentioned earlier, Thursday's average wait time was the longest, at nearly 7 minutes; Monday's wait time was the shortest, at an average of 4.37 minutes. Tuesday, Saturday and Sunday had about equal wait times, around 5 minutes. And Wednesday and Friday had average wait times in the 5-6 minute range.
+```{r, echo=FALSE, fig.align='center', fig.cap = "Wait Time with Different Day of Week"}
+knitr::include_graphics("./Figures/week_wt.png")
+```
+
+
+Figure() presented the average wait time for each day of the week. As we had mentioned earlier, Thursday's average wait time was the longest, at nearly 7 minutes; Monday's wait time was the shortest with an average of 4.37 minutes. Tuesday, Saturday and Sunday had about equal wait times, around 5 minutes. On the other hand, Wednesday and Friday reported average wait times within the 5-6 minute range.
 
 ```{r, echo=FALSE}
 #Average Wait_Time per Day_of_Week
@@ -309,20 +331,28 @@ avg_time <- tapply(BASA$Wait_Time, BASA$Day_of_Week, mean)
 avg_time_df <- data.frame(Day_of_Week = names(avg_time),
                                Average_Wait_Time = avg_time)
 
-plot_ly(x = avg_time_df$Day_of_Week,
+aw <- plot_ly(x = avg_time_df$Day_of_Week,
               y = avg_time_df$Average_Wait_Time,
               type = "bar",
               name = "Average Wait Time",
               marker = list(color = "lightblue", line = list(color = "black")),
               text = avg_time_df$Average_Wait_Time,
               textposition = "outside",
-              textfont = list(size = 14)) %>%
+              textfont = list(size = 6)) %>%
   layout(title = "Average Wait Time by Day of Week",
          xaxis = list(title = "Day of Week"),
-         yaxis = list(title = "Average Wait Time"))
+         yaxis = list(title = "Average Wait Time"),
+         font = list(size = 6))
+
+saveWidget(widget = aw, file = "./Figures/a_week_wt.html")
+shots<-webshot(url = "./Figures/a_week_wt.html", file = "./Figures/a_week_wt.png", delay = 1, zoom = 2, vheight = 150, vwidth = 250)
 ```
 
-Finally, we compared the difference in wait time and number of passengers by Season. Since the data for Spring and Winter were too scarce, we ignored them and only compared Summer and Autumn's wait time. When the range of wait time changed from 0-1 minute to 1-2 minutes, there was a significant increase in the number of people in the queue: the number of people queuing up for S2 in the Summer grew from 1,714 to more than 10,162 people, and the number of passengers in the queue in the Autumn grew even more, from 4,232 to 27,792, which was the highest number of people in the summer and the autumn for different wait time ranges. When the wait time started at 2 minutes or more, the number of people waiting in line decreased in summer and autumn as the wait time got longer. However, regardless of the wait time range, the number of people waiting in line for S2 in the autumn was basically higher than the number of passengers in the summer.
+```{r, echo=FALSE, fig.align='center', fig.cap = "Average Wait Time with Different Day of Week"}
+knitr::include_graphics("./Figures/a_week_wt.png")
+```
+
+Then, we examined the disparities in wait time and passenger volumes based on seasons. Since the data for Spring and Winter were too scarce, we ignored them and only compared Summer and Autumn's wait time. When the range of wait time shifted from 0-1 minute to 1-2 minutes, there was a significant increase in the number of people in the queue.Specifically, the number of people waiting in line for S2 during Summer increased from 1,714 to over 10,162, while in Autumn, it surged from 4,232 to 27,792—marking the highest count in both seasons across various wait time ranges. As the wait time exceeded 2 minutes, the number of passengers in line decreased for both Summer and Autumn. However, regardless of the wait time range, the queue attendance for S2 during Autumn consistently exceeded that of Summer.
 
 ```{r, echo=FALSE}
 #Classification according to Season
@@ -355,13 +385,20 @@ p3 <- layout(
   title = "Wait Time by Season",
   xaxis = list(title = "Wait Time(Minute)", range = c(0, 23)),  # Closing parenthesis added here
   yaxis = list(title = "Number of Passengers"),
-  showlegend = TRUE
+  showlegend = TRUE,
+  font = list(size = 6)
 )
 
-p3
+saveWidget(widget = p3, file = "./Figures/season_wt.html")
+shots<-webshot(url = "./Figures/season_wt.html", file = "./Figures/season_wt.png", delay = 1, zoom = 2, vheight = 200, vwidth = 300)
 ```
 
-From Figure() "Average Wait Time by Season", we could see that although there was a big difference between the number of people waiting in the airport security lines in the summer and the autumn, the average wait time of these two were almost the same, both were more than 5 minutes, and the difference was only about half a minute. This meant that season had a larger impact on the number of passengers in the airport, but a smaller impact on the waiting time in line.
+```{r, echo=FALSE, fig.align='center', fig.cap = "Wait Time with Different Season"}
+knitr::include_graphics("./Figures/season_wt.png")
+```
+
+
+Figure() revealed that the average duration of security line waits remained consistently above five minutes across both seasons, with a negligible difference of approximately thirty seconds. This meant that while seasonal changes substantially influenced airport passenger traffic, their impact on security queue wait time was relatively minor.
 ```{r, echo=FALSE}
 #Average Wait_Time for each Season
 avg_time_season <- tapply(BASA$Wait_Time, BASA$Season, mean)
@@ -369,7 +406,7 @@ avg_time_season <- tapply(BASA$Wait_Time, BASA$Season, mean)
 avg_time_season_df <- data.frame(Season = names(avg_time_season),
                                Average_Wait_Time = avg_time_season)
 
-plot_ly(
+as <- plot_ly(
   x = avg_time_season_df$Season,
   y = avg_time_season_df$Average_Wait_Time,
   type = "bar",
@@ -377,15 +414,23 @@ plot_ly(
   marker = list(color = "lightblue", line = list(color = "black")),
               text = avg_time_season_df$Average_Wait_Time,
               textposition = "outside",
-              textfont = list(size = 14)) %>%
+              textfont = list(size = 6)) %>%
   layout(
     title = "Average Wait Time by Season",
     xaxis = list(title = "Season"),
-    yaxis = list(title = "Average Wait Time")
+    yaxis = list(title = "Average Wait Time"),
+    font = list(size = 6)
   )
+
+saveWidget(widget = as, file = "./Figures/a_season_wt.html")
+shots<-webshot(url = "./Figures/a_season_wt.html", file = "./Figures/a_season_wt.png", delay = 1, zoom = 2, vheight = 250, vwidth = 250)
 ```
 
-Next, we compared C0 (the number of servers at S2) under different Time_of_Day(NIGHT;MORNING;AFTERNOON;EVENING). Because of the small number of data, NIGHT could not be visualized in Figure() "The Number of Security Agents at S2 by Time_of_Day". Otherwise, we found that the ordering of the number of passengers queuing for S2 in the MORNING, AFTERNOON, and NIGHT was opposite when C0 was equal to 0-1 and when C0 was equal to 2-3. When C0 was 0-1, the number of passengers in the afternoon was the largest, up to 33704; followed by evening, 22592; morning had the lowest number of passengers among these three, 15881. However, when C0 ranged from 2 to 3, Morning had the largest number of people waiting in line for security check S2 of these three, totaling 21,762, followed by Evening with 12,350, and the smallest number of people in the afternoon with only 7,792. When C0 was increased from 0-1 to 2-3, the number of passengers in the queues at both evening and afternoon decreased substantially, above 10,000 people; however, the number of people at morning increased by 5,000 instead. Therefore, we found that in the morning, the airport increased the number of servers by 1-2 to help passengers reduce their waiting time.
+```{r, echo=FALSE, fig.align='center', fig.cap = "Average Wait Time with Different Season"}
+knitr::include_graphics("./Figures/a_season_wt.png")
+```
+
+Subsequent analysis focused on comparing the quantity of servers at checkpoint S2 (C0) during different times of day (NIGHT; MORNING; AFTERNOON; EVENING). Due to data limitations, NIGHT time data could not be visualized in Figure(). With C0 at 0-1, AFTERNOON witnessed the highest passenger count (33,704) and MORNING registering the lowest (15,881). Conversely, when C0 increased to 2-3, MORNING experienced the highest queue volume (21,762), with AFTERNOON having the least (7,792). When the queue size at the airport in the morning increased by 5000, the number of servers for C0 increased from 0-1 to 2-3. This trend suggested that the airport strategically raised the number of servers in the MORNING by 1-2 to reduce passengers' wait time.
 
 ```{r, echo=FALSE}
 #Number of C0 (servers of S2) with different Time_of_Day
@@ -414,13 +459,19 @@ p4 <- layout(
   title = "The Number of Security Agents at S2 by Time_of_Day",
   xaxis = list(title = "The Number of Security Agents"),
   yaxis = list(title = "Number of Passengers"),
-  showlegend = TRUE
+  showlegend = TRUE,
+  font = list(size = 6)
 )
 
-p4
+saveWidget(widget = p4, file = "./Figures/day_C0.html")
+shots<-webshot(url = "./Figures/day_C0.html", file = "./Figures/day_C0.png", delay = 1, zoom = 2, vheight = 200, vwidth = 300)
 ```
 
-From Figure() "Average Number of Security Agents at S2(C0) by Time_of_Day", we found that the average number of security agents at S2 in the morning was the highest, which equaled to about 1.60. Although the average number of C0 in the evening was the second highest, which was approximately 1.37, there was still a gap with the average number of servers in the morning. Finally, even if the number of servers at night was too small to be shown in Figure(), its average number of servers was actually about the same as the average number of servers in the afternoon, which was around 1.20. Overall, we found that the number of servers was rather uniformly distributed around 1.3, which supported our M/M/1 model assumption in the subsequent Queuing Analysis.
+```{r, echo=FALSE, fig.align='center', fig.cap = "Number of C0 (servers of S2) with Different Time of Day"}
+knitr::include_graphics("./Figures/day_C0.png")
+```
+
+From Figure(), we found that the average number of security agents at S2 in the morning was the highest, approximately 1.60. The evening period followed closely with an average of 1.37. And the night's average number of servers was comparable to the average for the afternoon, around 1.20 servers. Overall, we found that the number of servers was rather uniformly distributed around 1.3, which supported our M/M/1 model assumption in the subsequent Queuing Analysis.
 ```{r, echo=FALSE}
 # Average C0(The Number of Security Agents at S2) for each Time_of_Day
 avg_time_day <- tapply(BASA$C0, BASA$Time_of_Day, mean)
@@ -428,7 +479,7 @@ avg_time_day <- tapply(BASA$C0, BASA$Time_of_Day, mean)
 avg_time_day_df <- data.frame(Time_of_Day = names(avg_time_day),
                                Average_C0 = avg_time_day)
 
-plot_ly(
+a_C0 <- plot_ly(
   x = avg_time_day_df$Time_of_Day,
   y = avg_time_day_df$Average_C0,
   type = "bar",
@@ -440,8 +491,16 @@ plot_ly(
   layout(
     title = "Average Number of Security Agents at S2(C0) by Time_of_Day",
     xaxis = list(title = "Time_of_Day"),
-    yaxis = list(title = "Average Number of Security Agents at S2(C0)")
+    yaxis = list(title = "Average Number of Security Agents at S2(C0)"),
+    font = list(size = 6)
   )
+
+saveWidget(widget = a_C0, file = "./Figures/a_day_C0.html")
+shots<-webshot(url = "./Figures/a_day_C0.html", file = "./Figures/a_day_C0.png", delay = 1, zoom = 2, vheight = 250, vwidth = 400)
+```
+
+```{r, echo=FALSE, fig.align='center', fig.cap = "Average Number of C0 (servers of S2) with Different Time of Day"}
+knitr::include_graphics("./Figures/a_day_C0.png")
 ```
 
 ### Queuing Analysis
